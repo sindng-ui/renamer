@@ -9,6 +9,24 @@ interface RenameRulesProps {
 export const RenameRules: React.FC<RenameRulesProps> = ({ options, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Local string inputs for seamless editing/deleting of numbers
+  const [randomLengthInput, setRandomLengthInput] = useState<string>(String(options.randomLength));
+  const [truncateLengthInput, setTruncateLengthInput] = useState<string>(String(options.truncateLength || ''));
+  const [startIndexInput, setStartIndexInput] = useState<string>(String(options.startIndex));
+
+  // Sync local states if props change externally
+  React.useEffect(() => {
+    setRandomLengthInput(String(options.randomLength));
+  }, [options.randomLength]);
+
+  React.useEffect(() => {
+    setTruncateLengthInput(String(options.truncateLength || ''));
+  }, [options.truncateLength]);
+
+  React.useEffect(() => {
+    setStartIndexInput(String(options.startIndex));
+  }, [options.startIndex]);
+
   const updateOption = <K extends keyof RenameOptions>(key: K, value: RenameOptions[K]) => {
     const updated = {
       ...options,
@@ -71,8 +89,21 @@ export const RenameRules: React.FC<RenameRulesProps> = ({ options, onChange }) =
               <input
                 type="number"
                 className="form-input"
-                value={options.randomLength}
-                onChange={(e) => updateOption('randomLength', Math.max(4, parseInt(e.target.value) || 8))}
+                value={randomLengthInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRandomLengthInput(val);
+                  const parsed = parseInt(val, 10);
+                  if (!isNaN(parsed)) {
+                    updateOption('randomLength', parsed);
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(randomLengthInput, 10);
+                  const clamped = isNaN(parsed) ? 8 : Math.min(20, Math.max(4, parsed));
+                  setRandomLengthInput(String(clamped));
+                  updateOption('randomLength', clamped);
+                }}
                 min={4}
                 max={20}
                 style={{ padding: '0.45rem', fontSize: '0.8rem' }}
@@ -208,8 +239,23 @@ export const RenameRules: React.FC<RenameRulesProps> = ({ options, onChange }) =
                 <input
                   type="number"
                   className="form-input"
-                  value={options.truncateLength || ''}
-                  onChange={(e) => updateOption('truncateLength', Math.max(0, parseInt(e.target.value) || 0))}
+                  value={truncateLengthInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTruncateLengthInput(val);
+                    const parsed = parseInt(val, 10);
+                    if (!isNaN(parsed)) {
+                      updateOption('truncateLength', Math.max(0, parsed));
+                    } else if (val === '') {
+                      updateOption('truncateLength', 0);
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(truncateLengthInput, 10);
+                    const clamped = isNaN(parsed) ? 0 : Math.max(0, parsed);
+                    setTruncateLengthInput(clamped === 0 ? '' : String(clamped));
+                    updateOption('truncateLength', clamped);
+                  }}
                   placeholder="제한 없음 (0)"
                   min={0}
                   style={{ padding: '0.5rem', fontSize: '0.85rem' }}
@@ -264,8 +310,21 @@ export const RenameRules: React.FC<RenameRulesProps> = ({ options, onChange }) =
                     <input
                       type="number"
                       className="form-input"
-                      value={options.startIndex}
-                      onChange={(e) => updateOption('startIndex', Math.max(0, parseInt(e.target.value) || 0))}
+                      value={startIndexInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStartIndexInput(val);
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed)) {
+                          updateOption('startIndex', Math.max(0, parsed));
+                        }
+                      }}
+                      onBlur={() => {
+                        const parsed = parseInt(startIndexInput, 10);
+                        const clamped = isNaN(parsed) ? 1 : Math.max(0, parsed);
+                        setStartIndexInput(String(clamped));
+                        updateOption('startIndex', clamped);
+                      }}
                       style={{ width: '90px', padding: '0.45rem', fontSize: '0.8rem' }}
                       min={0}
                     />
