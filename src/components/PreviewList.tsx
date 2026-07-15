@@ -4,9 +4,10 @@ import type { FileRenameItem } from '../hooks/useRenameScheduler';
 interface PreviewListProps {
   items: FileRenameItem[];
   rowHeight?: number;
+  totalCount: number;
 }
 
-export const PreviewList: React.FC<PreviewListProps> = ({ items, rowHeight = 42 }) => {
+export const PreviewList: React.FC<PreviewListProps> = ({ items, rowHeight = 42, totalCount }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(300);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,18 +61,41 @@ export const PreviewList: React.FC<PreviewListProps> = ({ items, rowHeight = 42 
     };
   }, [items, scrollTop, containerHeight, rowHeight]);
 
+  const isLarge = totalCount > 100;
+
   return (
     <div className="premium-card animate-slide-up" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
       flex: 1, 
       minHeight: '260px', 
-      maxHeight: '400px',
-      gap: '0.75rem' 
+      maxHeight: '420px',
+      gap: '0.65rem' 
     }}>
-      <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
-        🔄 변경 결과 실시간 미리보기
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+          🔄 변경 결과 실시간 미리보기
+        </h3>
+        {totalCount > 0 && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {isLarge ? `상위 ${items.length}개 표시 중 / ` : ''}전체 {totalCount.toLocaleString()}개
+          </span>
+        )}
+      </div>
+
+      {isLarge && (
+        <div className="animate-fade-in" style={{
+          padding: '0.45rem 0.65rem',
+          backgroundColor: 'rgba(6, 182, 212, 0.08)',
+          border: '1px solid rgba(6, 182, 212, 0.25)',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.72rem',
+          color: 'var(--color-neon-cyan)',
+          lineHeight: 1.4,
+        }}>
+          ⚡ <b>대용량 성능 최적화 (2초 대기 디바운스)</b>: 타이핑 중 렉을 막기 위해 입력이 끝난 후 2초 뒤에 상위 50개 파일의 변경 예측 결과가 갱신됩니다. (실제 적용은 전체 {totalCount.toLocaleString()}개에 완벽하게 일괄 적용됩니다!)
+        </div>
+      )}
 
       <div className="preview-table-container">
         <div className="preview-table-header">

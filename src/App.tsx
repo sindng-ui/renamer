@@ -56,6 +56,16 @@ export default function App() {
   // 4. Rename Scheduler Hook
   const { progress, running, results, executeRename, stopRename, clearResults } = useRenameScheduler();
 
+  // Debounced options state to prevent frequent preview updates while typing (2s debounce)
+  const [debouncedOptions, setDebouncedOptions] = useState<RenameOptions>(options);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedOptions(options);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [options]);
+
   // Monitor Android back button to confirm app exit (Fixes 3번 에러)
   useEffect(() => {
     const handler = CapApp.addListener('backButton', () => {
@@ -66,18 +76,21 @@ export default function App() {
     };
   }, []);
 
-  // 5. Generate live preview list via useMemo for performance optimization
+  // 5. Generate live preview list via useMemo for performance optimization (First 50 items for large lists with debounce)
   const previewFiles = useMemo(() => {
     if (originalFiles.length === 0) return [];
     
-    const originalNames = originalFiles.map(f => f.originalName);
-    const newNames = previewRenameList(originalNames, options);
+    const isLarge = originalFiles.length > 100;
+    const filesToCompute = isLarge ? originalFiles.slice(0, 50) : originalFiles;
 
-    return originalFiles.map((file, idx) => ({
+    const originalNames = filesToCompute.map(f => f.originalName);
+    const newNames = previewRenameList(originalNames, debouncedOptions);
+
+    return filesToCompute.map((file, idx) => ({
       ...file,
       newName: newNames[idx],
     }));
-  }, [originalFiles, options]);
+  }, [originalFiles, debouncedOptions]);
 
   // Handle files selection
   const handleFilesSelected = (files: FileRenameItem[], path: string) => {
@@ -85,25 +98,37 @@ export default function App() {
     setDirectoryPath(path);
   };
 
+  // Helper to generate full rename list on-demand
+  const getFullRenameList = (): FileRenameItem[] => {
+    const originalNames = originalFiles.map(f => f.originalName);
+    const newNames = previewRenameList(originalNames, options);
+    return originalFiles.map((file, idx) => ({
+      ...file,
+      newName: newNames[idx],
+    }));
+  };
+
   // Trigger rename operation
   const handleStartRename = () => {
-    if (previewFiles.length === 0 || running) return;
+    if (originalFiles.length === 0 || running) return;
 
     if (options.mode === 'random') {
       setIsConfirmOpen(true);
     } else {
-      executeRename(previewFiles);
+      executeRename(getFullRenameList());
     }
   };
 
   const handleConfirmRandomRename = () => {
     setIsConfirmOpen(false);
-    executeRename(previewFiles);
+    executeRename(getFullRenameList());
   };
 
   const handleClearResults = () => {
     if (results.length > 0) {
-      const updatedFiles = previewFiles.map(file => {
+      // Calculate full rename list using options at the time of rename to update state
+      const fullRenamedList = getFullRenameList();
+      const updatedFiles = fullRenamedList.map(file => {
         const result = results.find(r => r.id === file.id);
         if (result && result.success) {
           return {
@@ -202,7 +227,7 @@ export default function App() {
       />
 
       {/* 3. Realtime Live Preview List (Flex-grow to occupy rest space) */}
-      <PreviewList items={previewFiles} />
+      <PreviewList items={previewFiles} totalCount={originalFiles.length} />
 
       {/* Confirmation modal for random mode */}
       <ConfirmDialog
