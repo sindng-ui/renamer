@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { previewRenameList } from './utils/renameRules';
 import type { RenameOptions } from './utils/renameRules';
 import { useRenameScheduler } from './hooks/useRenameScheduler';
@@ -11,22 +11,39 @@ import { ResultSummary } from './components/ResultSummary';
 import { ConfirmDialog } from './components/CommonDialog';
 
 export default function App() {
-  // 1. Rename Options state
-  const [options, setOptions] = useState<RenameOptions>({
-    mode: 'custom',
-    randomLength: 8,
-    randomPrefix: 'rand_',
-    randomSuffix: '',
-    findText: '',
-    replaceText: '',
-    prefix: '',
-    suffix: '',
-    truncateLength: 0,
-    addDate: false,
-    dateFormat: 'YYYYMMDD',
-    addIndex: false,
-    startIndex: 1,
+  // 1. Rename Options state with local storage persistence
+  const [options, setOptions] = useState<RenameOptions>(() => {
+    try {
+      const saved = localStorage.getItem('rename_options');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load rename options from localStorage', e);
+    }
+    
+    // Default to 'random' mode as requested by user
+    return {
+      mode: 'random',
+      randomLength: 8,
+      randomPrefix: 'rand_',
+      randomSuffix: '',
+      findText: '',
+      replaceText: '',
+      prefix: '',
+      suffix: '',
+      truncateLength: 0,
+      addDate: false,
+      dateFormat: 'YYYYMMDD',
+      addIndex: false,
+      startIndex: 1,
+    };
   });
+
+  // Save options to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('rename_options', JSON.stringify(options));
+  }, [options]);
 
   // 2. File State
   const [originalFiles, setOriginalFiles] = useState<FileRenameItem[]>([]);
@@ -62,37 +79,32 @@ export default function App() {
     if (previewFiles.length === 0 || running) return;
 
     if (options.mode === 'random') {
-      // Prompt safety dialog for random bulk modification
       setIsConfirmOpen(true);
     } else {
-      // Custom mode executes directly or with brief confirm
-      executeRename(previewFiles, directoryPath);
+      executeRename(previewFiles);
     }
   };
 
   const handleConfirmRandomRename = () => {
     setIsConfirmOpen(false);
-    executeRename(previewFiles, directoryPath);
+    executeRename(previewFiles);
   };
 
   const handleClearResults = () => {
-    // Reset file list to show renamed files if successful, or keep original
     if (results.length > 0) {
-      // Re-read or update original files with their new names for next run
       const updatedFiles = previewFiles.map(file => {
         const result = results.find(r => r.id === file.id);
         if (result && result.success) {
           return {
             ...file,
-            originalName: file.newName, // The new name becomes the original name
+            originalName: file.newName,
           };
         }
         return file;
       });
       setOriginalFiles(updatedFiles);
     }
-    // Clean up result panel state
-    executeRename([], ''); 
+    executeRename([]); 
   };
 
   return (
@@ -101,8 +113,8 @@ export default function App() {
       flexDirection: 'column', 
       height: '100%', 
       width: '100%',
-      padding: '1rem',
-      gap: '1rem',
+      padding: '0.85rem',
+      gap: '0.75rem',
       overflowY: 'auto'
     }}>
       {/* Premium Neon Header */}
@@ -110,50 +122,47 @@ export default function App() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
-        paddingBottom: '0.5rem',
+        paddingBottom: '0.4rem',
         borderBottom: '1px solid var(--border-color)'
       }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
             ⚡ <span className="gradient-text">Bulk Renamer</span>
           </h1>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-            안드로이드 대용량 파일 이름 일괄 변경 도구
-          </p>
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
           v1.0.0
         </div>
       </header>
 
-      {/* 1. File Selection Section */}
-      <FileSelector 
-        onFilesSelected={handleFilesSelected}
-        selectedCount={originalFiles.length}
-        selectedDirectory={directoryPath}
-      />
-
-      {/* 2. Options Setup Section */}
-      <RenameRules 
-        options={options}
-        onChange={setOptions}
-      />
-
-      {/* 3. Realtime Live Preview List */}
-      <PreviewList items={previewFiles} />
-
-      {/* 4. Action Command Bar */}
-      {originalFiles.length > 0 && !running && results.length === 0 && (
-        <div className="animate-slide-up" style={{ display: 'flex', marginTop: '0.25rem' }}>
+      {/* 4. Action Command Bar (Promoted to top for accessibility) */}
+      <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {originalFiles.length === 0 ? (
+          <button 
+            className="btn btn-secondary" 
+            style={{ width: '100%', padding: '0.8rem', fontSize: '0.95rem', cursor: 'not-allowed', color: 'var(--text-muted)' }}
+            disabled
+          >
+            📂 먼저 대상 폴더/파일을 가져오십시오
+          </button>
+        ) : !running && results.length === 0 ? (
           <button 
             className="btn btn-cyan" 
-            style={{ width: '100%', padding: '0.9rem', fontSize: '1rem' }}
+            style={{ 
+              width: '100%', 
+              padding: '0.9rem', 
+              fontSize: '1rem',
+              background: options.mode === 'random' 
+                ? 'linear-gradient(135deg, var(--color-neon-pink), #c026d3)' 
+                : 'linear-gradient(135deg, var(--color-neon-cyan), #0891b2)',
+              boxShadow: options.mode === 'random' ? 'var(--border-glow-pink)' : 'var(--border-glow-cyan)'
+            }}
             onClick={handleStartRename}
           >
-            🔥 선택한 {originalFiles.length.toLocaleString()}개 파일 일괄 변경 시작
+            {options.mode === 'random' ? '🎲 원클릭 랜덤 이름 변경 시작' : '✏️ 커스텀 규칙 일괄 변경 시작'}
           </button>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       {/* 5. Progress Stream Panel */}
       <ProgressIndicator 
@@ -167,6 +176,22 @@ export default function App() {
         results={results}
         onClear={handleClearResults}
       />
+
+      {/* 1. File Selection Section (Collapsed by default) */}
+      <FileSelector 
+        onFilesSelected={handleFilesSelected}
+        selectedCount={originalFiles.length}
+        selectedDirectory={directoryPath}
+      />
+
+      {/* 2. Options Setup Section */}
+      <RenameRules 
+        options={options}
+        onChange={setOptions}
+      />
+
+      {/* 3. Realtime Live Preview List (Flex-grow to occupy rest space) */}
+      <PreviewList items={previewFiles} />
 
       {/* Confirmation modal for random mode */}
       <ConfirmDialog

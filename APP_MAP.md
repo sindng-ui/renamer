@@ -49,17 +49,19 @@
 
 ### [[File / Folder Selector]]
 - **ID**: `file-selector-ui`
-- **Keywords**: [`폴더 선택`, `파일 선택`, `네이티브 연동`, `대용량 더미 데이터`, `자주 쓰는 폴더`, `즐겨찾기`, `localStorage`]
+- **Keywords**: [`폴더 선택`, `파일 선택`, `네이티브 연동`, `대용량 더미 데이터`, `자주 쓰는 폴더`, `즐겨찾기`, `localStorage`, `아코디언`, `접기`, `file-picker`]
 - **Location**:
   - `View`: [src/components/FileSelector.tsx](./src/components/FileSelector.tsx)
 - **Core Interface**:
-  - `FileSelector`: Documents 폴더 브라우징, 커스텀 경로 입력 제어, 그리고 자주 쓰는 폴더(Favorite Folders) 목록 저장(localStorage 연동)/삭제/선택 및 3,000개 가상 더미 로딩 기능 제공
+  - `FileSelector`: 디폴트로 접혀 있는 콤팩트 뷰에서 안드로이드 시스템 파일 탐색창을 띄우는 `@capawesome/capacitor-file-picker` 플러그인을 직접 기동하고, 선택된 다중 파일들의 실제 물리 local path를 안전하게 추출하여 전달. 웹 환경 등 경로 누락 시 가상 경로 Fallback 시뮬레이션 자동 지원.
 
 ### [[Rename Rules Controller]]
 - **ID**: `rename-rules-controller`
-- **Keywords**: [`규칙 설정`, `옵션 제어`, `랜덤 설정`, `커스텀 탭`]
+- **Keywords**: [`규칙 설정`, `옵션 제어`, `랜덤 설정`, `커스텀 팝업`, `localStorage 저장`]
 - **Location**:
   - `View`: [src/components/RenameRules.tsx](./src/components/RenameRules.tsx)
+- **Core Interface**:
+  - `RenameRules`: 기본적으로 원클릭 랜덤 중복방지 옵션(길이, 머리말, 꼬리말)만 콤팩트하게 노출하고, 커스텀 세부 규칙은 팝업 모달 다이얼로그로 격리하여 쾌적한 최상급 원클릭 접근성 UI를 지원
 
 ### [[Virtualized Live Preview]]
 - **ID**: `virtualized-live-preview`
