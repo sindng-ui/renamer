@@ -111,8 +111,9 @@
 - **ID**: `content-rename-native-bridge`
 - **Keywords**: [`content:// URI`, `이름 변경`, `DocumentsContract`, `MainActivity`, `Capacitor Plugin`]
 - **Location**:
-  - `Java Code`: [MainActivity.java](./android/app/src/main/java/com/happytool/renamer/MainActivity.java)
+  - `Java Code`: [ContentRenamePlugin.java](./android/app/src/main/java/com/happytool/renamer/ContentRenamePlugin.java)
+  - `Registration`: [MainActivity.java](./android/app/src/main/java/com/happytool/renamer/MainActivity.java)
 - **Core Interface**:
-  - `ContentRename`: 안드로이드 스토리지 액세스 프레임워크(SAF) 내에서 파일 탐색기로부터 획득한 `content://` URI를 전달받아, 안드로이드 ContentResolver 및 DocumentsContract API를 사용해 물리 파일의 이름을 원활하게 강제 변경해주는 커스텀 Capacitor 플러그인
+  - `ContentRename`: 안드로이드 스토리지 액세스 프레임워크(SAF) 내에서 파일 탐색기로부터 획득한 `content://` URI를 전달받아, 안드로이드 ContentResolver 및 DocumentsContract API를 사용해 물리 파일의 이름을 원활하게 강제 변경해주는 커스텀 Capacitor 플러그인 (Capacitor 로더 인식을 위해 public class로 별도 분리 설계됨)
 
 
