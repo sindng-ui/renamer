@@ -2,12 +2,15 @@ package com.happytool.renamer;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.provider.Settings;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -94,6 +97,49 @@ public class ContentRenamePlugin extends Plugin {
      * List all files in a given absolute directory path.
      * Called from JS when user clicks a favorited folder to auto-load all files.
      */
+    /** Check if MANAGE_EXTERNAL_STORAGE permission is granted */
+    @PluginMethod
+    public void checkStoragePermission(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            ret.put("granted", Environment.isExternalStorageManager());
+            ret.put("needsAction", !Environment.isExternalStorageManager());
+        } else {
+            // Android 10 and below: legacy permission check
+            ret.put("granted", true);
+            ret.put("needsAction", false);
+        }
+        call.resolve(ret);
+    }
+
+    /** Open the system settings page to grant MANAGE_EXTERNAL_STORAGE */
+    @PluginMethod
+    public void openStorageSettings(PluginCall call) {
+        try {
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            } else {
+                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            // Fallback: open general all files access settings
+            try {
+                Intent fallback = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(fallback);
+                call.resolve();
+            } catch (Exception e2) {
+                call.reject("Cannot open storage settings: " + e2.getMessage());
+            }
+        }
+    }
+
     @PluginMethod
     public void listFiles(PluginCall call) {
         String dirPath = call.getString("path");

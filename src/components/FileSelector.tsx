@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
 import type { FileRenameItem } from '../hooks/useRenameScheduler';
@@ -23,7 +23,38 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [justLoadedPath, setJustLoadedPath] = useState<string | null>(null); // Path auto-detected from picker
+  const [justLoadedPath, setJustLoadedPath] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null); // null = checking
+
+  // Check storage permission on mount
+  useEffect(() => {
+    const checkPerm = async () => {
+      const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
+      if (isWeb) { setPermissionGranted(true); return; }
+      try {
+        const result = await ContentRename.checkStoragePermission();
+        setPermissionGranted(result.granted);
+      } catch {
+        setPermissionGranted(true); // graceful fallback
+      }
+    };
+    checkPerm();
+  }, []);
+
+  const handleOpenStorageSettings = async () => {
+    try {
+      await ContentRename.openStorageSettings();
+      // Re-check after returning from settings (user may have granted)
+      setTimeout(async () => {
+        try {
+          const result = await ContentRename.checkStoragePermission();
+          setPermissionGranted(result.granted);
+        } catch {}
+      }, 1500);
+    } catch (err: any) {
+      setError('설정 화면을 열 수 없습니다: ' + err.message);
+    }
+  };
 
   // Load favorites from localStorage
   const [favorites, setFavorites] = useState<FavoriteFolder[]>(() => {
@@ -188,8 +219,38 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
   const isAlreadyFavorite = favorites.some(f => f.path === justLoadedPath || f.path === selectedDirectory);
   const offerFavoritePath = justLoadedPath || selectedDirectory;
 
+  // Permission banner: shown if permission not yet granted
+  const showPermissionBanner = permissionGranted === false;
+
   return (
     <div className="premium-card animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.85rem 1.1rem' }}>
+
+      {/* ── Permission Warning Banner ──────────────────────────── */}
+      {showPermissionBanner && (
+        <div className="animate-fade-in" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.6rem',
+          padding: '0.55rem 0.8rem',
+          backgroundColor: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.75rem',
+        }}>
+          <div style={{ color: 'var(--text-secondary)', lineHeight: 1.45, flex: 1 }}>
+            <span style={{ color: 'var(--color-neon-red)', fontWeight: 700 }}>⚠️ 파일 접근 권한 없음</span><br />
+            <span style={{ fontSize: '0.68rem' }}>폴더를 읽으려면 <b>'모든 파일 접근'</b> 권한이 필요합니다</span>
+          </div>
+          <button
+            className="btn btn-secondary"
+            style={{ padding: '0.35rem 0.7rem', fontSize: '0.72rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--color-neon-red)', whiteSpace: 'nowrap' }}
+            onClick={handleOpenStorageSettings}
+          >
+            설정 열기 →
+          </button>
+        </div>
+      )}
 
       {/* ── Accordion Header ─────────────────────────────── */}
       <div
