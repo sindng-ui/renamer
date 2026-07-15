@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Filesystem } from '@capacitor/filesystem';
 import { App } from '@capacitor/app';
+import { registerPlugin } from '@capacitor/core';
 
 // Exporting types and interfaces
 export interface FileRenameItem {
   id: string;
   originalName: string;
   newName: string;
-  path: string; // Absolute path to file (e.g., /storage/emulated/0/Download/test.txt)
+  path: string; // Absolute path or content:// URI to file
 }
 
 export interface RenameProgress {
@@ -26,6 +27,13 @@ export interface RenameResult {
   success: boolean;
   error?: string;
 }
+
+// Native Bridge interface for content:// URI renaming
+interface ContentRenamePlugin {
+  rename(options: { uri: string; newName: string }): Promise<{ uri: string }>;
+}
+
+const ContentRename = registerPlugin<ContentRenamePlugin>('ContentRename');
 
 export function useRenameScheduler() {
   const [progress, setProgress] = useState<RenameProgress>({
@@ -63,6 +71,19 @@ export function useRenameScheduler() {
   const stopRename = () => {
     stateRef.current.running = false;
     setRunning(false);
+  };
+
+  // Safe method to clear results and progress states (Fixes 1번 & 2번 에러)
+  const clearResults = () => {
+    setResults([]);
+    setProgress({
+      total: 0,
+      processed: 0,
+      success: 0,
+      failure: 0,
+      currentFile: '',
+      filesPerSec: 0,
+    });
   };
 
   const executeRename = async (
@@ -114,15 +135,18 @@ export function useRenameScheduler() {
           }
 
           try {
-            // Check if running on Web platform (e.g. localhost browser testing)
-            // If so, simulate successful rename to prevent Entry does not exist error
             const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
             
             if (isWeb) {
-              // Simulate small network/io delay for realistic UI transition
               await new Promise(resolve => setTimeout(resolve, 1));
+            } else if (item.path.startsWith('content://')) {
+              // content:// URI renaming via DocumentsContract native bridge (SAF)
+              await ContentRename.rename({
+                uri: item.path,
+                newName: item.newName,
+              });
             } else {
-              // Actual Android / iOS native filesystem renaming
+              // Regular file path renaming
               const lastSlashIdx = item.path.lastIndexOf('/');
               if (lastSlashIdx === -1) {
                 throw new Error('Invalid absolute path structure');
@@ -191,5 +215,6 @@ export function useRenameScheduler() {
     results,
     executeRename,
     stopRename,
+    clearResults,
   };
 }

@@ -9,6 +9,7 @@ import { PreviewList } from './components/PreviewList';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import { ResultSummary } from './components/ResultSummary';
 import { ConfirmDialog } from './components/CommonDialog';
+import { App as CapApp } from '@capacitor/app';
 
 export default function App() {
   // 1. Rename Options state with local storage persistence
@@ -22,7 +23,6 @@ export default function App() {
       console.warn('Failed to load rename options from localStorage', e);
     }
     
-    // Default to 'random' mode as requested by user
     return {
       mode: 'random',
       randomLength: 8,
@@ -51,9 +51,20 @@ export default function App() {
 
   // 3. Confirm Dialog state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // 4. Rename Scheduler Hook
-  const { progress, running, results, executeRename, stopRename } = useRenameScheduler();
+  const { progress, running, results, executeRename, stopRename, clearResults } = useRenameScheduler();
+
+  // Monitor Android back button to confirm app exit (Fixes 3번 에러)
+  useEffect(() => {
+    const handler = CapApp.addListener('backButton', () => {
+      setIsExitConfirmOpen(true);
+    });
+    return () => {
+      handler.then(h => h.remove());
+    };
+  }, []);
 
   // 5. Generate live preview list via useMemo for performance optimization
   const previewFiles = useMemo(() => {
@@ -104,7 +115,7 @@ export default function App() {
       });
       setOriginalFiles(updatedFiles);
     }
-    executeRename([]); 
+    clearResults(); 
   };
 
   return (
@@ -203,6 +214,18 @@ export default function App() {
         isDanger={true}
         onConfirm={handleConfirmRandomRename}
         onCancel={() => setIsConfirmOpen(false)}
+      />
+
+      {/* App Exit Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isExitConfirmOpen}
+        title="🚪 앱 종료 확인"
+        message="Bulk Renamer 앱을 종료하시겠습니까?"
+        confirmText="종료"
+        cancelText="취소"
+        isDanger={false}
+        onConfirm={() => CapApp.exitApp()}
+        onCancel={() => setIsExitConfirmOpen(false)}
       />
     </div>
   );

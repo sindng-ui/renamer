@@ -100,5 +100,19 @@
 - **Location**:
   - `Config`: [.github/workflows/android.yml](./.github/workflows/android.yml)
 - **Core Interface**:
-  - `Build Android APK`: GitHub에 코드가 푸시되면 클라우드 우분투 러너가 작동하여 Java JDK 17 및 Android SDK 환경을 세팅하고, 프론트엔드 빌드 및 Gradle 컴파일(`assembleDebug`)을 자동으로 수행하여 결과물인 `app-debug.apk`를 업로드하는 무중단 빌드 워크플로우
+  - `Build Android APK`: GitHub에 코드가 푸시되면 클라우드 우분투 러너가 작동하여 Java JDK 21 및 Android SDK 환경을 세팅하고, 프론트엔드 빌드 및 Gradle 컴파일(`assembleDebug`)을 자동으로 수행하여 결과물인 `app-debug.apk`를 업로드하는 무중단 빌드 워크플로우
+
+---
+
+## 5. Android Native Bridges
+안드로이드 OS 기능을 제어하기 위해 탑재된 자바 브릿지 플러그인입니다.
+
+### [[Content Rename Native Bridge]]
+- **ID**: `content-rename-native-bridge`
+- **Keywords**: [`content:// URI`, `이름 변경`, `DocumentsContract`, `MainActivity`, `Capacitor Plugin`]
+- **Location**:
+  - `Java Code`: [MainActivity.java](./android/app/src/main/java/com/happytool/renamer/MainActivity.java)
+- **Core Interface**:
+  - `ContentRename`: 안드로이드 스토리지 액세스 프레임워크(SAF) 내에서 파일 탐색기로부터 획득한 `content://` URI를 전달받아, 안드로이드 ContentResolver 및 DocumentsContract API를 사용해 물리 파일의 이름을 원활하게 강제 변경해주는 커스텀 Capacitor 플러그인
+
 
