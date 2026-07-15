@@ -28,9 +28,10 @@ export interface RenameResult {
   error?: string;
 }
 
-// Native Bridge interface for content:// URI renaming
+// Native Bridge interface for content:// URI renaming and folder listing
 interface ContentRenamePlugin {
   rename(options: { uri: string; newName: string }): Promise<{ uri: string }>;
+  listFiles(options: { path: string }): Promise<{ files: Array<{ name: string; path: string; size: number }>; directory: string; count: number }>;
 }
 
 const ContentRename = registerPlugin<ContentRenamePlugin>('ContentRename');
@@ -218,3 +219,6 @@ export function useRenameScheduler() {
     clearResults,
   };
 }
+
+// Export for use in FileSelector and other components
+export { ContentRename };

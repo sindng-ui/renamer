@@ -8,6 +8,7 @@ import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -86,6 +87,53 @@ public class ContentRenamePlugin extends Plugin {
 
         } catch (Exception e) {
             call.reject("Failed to rename: " + e.getMessage());
+        }
+    }
+
+    /**
+     * List all files in a given absolute directory path.
+     * Called from JS when user clicks a favorited folder to auto-load all files.
+     */
+    @PluginMethod
+    public void listFiles(PluginCall call) {
+        String dirPath = call.getString("path");
+        if (dirPath == null || dirPath.isEmpty()) {
+            call.reject("Directory path is null or empty");
+            return;
+        }
+
+        try {
+            File dir = new File(dirPath);
+            if (!dir.exists() || !dir.isDirectory()) {
+                call.reject("Path is not a valid directory: " + dirPath);
+                return;
+            }
+
+            File[] files = dir.listFiles();
+            if (files == null) {
+                call.reject("Could not read directory (permission denied?): " + dirPath);
+                return;
+            }
+
+            JSArray fileArray = new JSArray();
+            for (File file : files) {
+                if (file.isFile()) { // Only files, not subdirectories
+                    JSObject fileObj = new JSObject();
+                    fileObj.put("name", file.getName());
+                    fileObj.put("path", file.getAbsolutePath());
+                    fileObj.put("size", file.length());
+                    fileArray.put(fileObj);
+                }
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("files", fileArray);
+            ret.put("directory", dirPath);
+            ret.put("count", fileArray.length());
+            call.resolve(ret);
+
+        } catch (Exception e) {
+            call.reject("Failed to list files: " + e.getMessage());
         }
     }
 

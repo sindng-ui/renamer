@@ -49,11 +49,13 @@
 
 ### [[File / Folder Selector]]
 - **ID**: `file-selector-ui`
-- **Keywords**: [`폴더 선택`, `파일 선택`, `네이티브 연동`, `대용량 더미 데이터`, `자주 쓰는 폴더`, `즐겨찾기`, `localStorage`, `아코디언`, `접기`, `file-picker`]
+- **Keywords**: [`폴더 선택`, `파일 선택`, `네이티브 연동`, `자동 폴더 감지`, `즐겨찾기`, `listFiles`, `file-picker`]
 - **Location**:
   - `View`: [src/components/FileSelector.tsx](./src/components/FileSelector.tsx)
 - **Core Interface**:
-  - `FileSelector`: 디폴트로 접혀 있는 콤팩트 뷰에서 안드로이드 시스템 파일 탐색창을 띄우는 `@capawesome/capacitor-file-picker` 플러그인을 직접 기동하고, 선택된 다중 파일들의 실제 물리 local path를 안전하게 추출하여 전달. 웹 환경 등 경로 누락 시 가상 경로 Fallback 시뮬레이션 자동 지원.
+  - `handleOpenFilePicker`: 파일 탐색기를 열어 파일 다중 선택 → 완료 즉시 부모 폴더 경로를 자동 감지 → 즐겨찾기 추가 안내 팝업 표시
+  - `handleLoadFolderByPath(path)`: 즐겨찾기 폴더 클릭 시 Java `ContentRename.listFiles()` 브릿지를 호출하여 해당 절대경로 폴더 내 모든 파일을 자동 일괄 로드 (원클릭 완성)
+  - `favorites (FavoriteFolder[])`: `localStorage` 영구 저장. 폴더 path + label 구조로 관리. 기존 v1 포맷 자동 마이그레이션 지원
 
 ### [[Rename Rules Controller]]
 - **ID**: `rename-rules-controller`
