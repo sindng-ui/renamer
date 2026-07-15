@@ -1,6 +1,7 @@
 package com.happytool.renamer;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
@@ -149,6 +150,14 @@ public class ContentRenamePlugin extends Plugin {
         }
 
         try {
+            // === Case A: content:// URI (e.g. content://media/external/images/media) ===
+            // Use MediaStore query to enumerate files from that collection
+            if (dirPath.startsWith("content://")) {
+                listFilesByMediaStoreUri(call, dirPath);
+                return;
+            }
+
+            // === Case B: Absolute file system path ===
             File dir = new File(dirPath);
             if (!dir.exists() || !dir.isDirectory()) {
                 call.reject("Path is not a valid directory: " + dirPath);
@@ -163,7 +172,7 @@ public class ContentRenamePlugin extends Plugin {
 
             JSArray fileArray = new JSArray();
             for (File file : files) {
-                if (file.isFile()) { // Only files, not subdirectories
+                if (file.isFile()) {
                     JSObject fileObj = new JSObject();
                     fileObj.put("name", file.getName());
                     fileObj.put("path", file.getAbsolutePath());
@@ -180,6 +189,100 @@ public class ContentRenamePlugin extends Plugin {
 
         } catch (Exception e) {
             call.reject("Failed to list files: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Query MediaStore for files using a content:// collection URI.
+     * This handles cases like content://media/external/images/media
+     * or content://com.android.providers.media.documents/...
+     */
+    private void listFilesByMediaStoreUri(PluginCall call, String uriString) {
+        try {
+            Uri uri = Uri.parse(uriString);
+            ContentResolver resolver = getContext().getContentResolver();
+            String[] projection = {
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.DATA,
+                MediaStore.MediaColumns.SIZE,
+            };
+
+            Cursor cursor = resolver.query(uri, projection, null, null, MediaStore.MediaColumns.DISPLAY_NAME + " ASC");
+            if (cursor == null) {
+                call.reject("Cannot query MediaStore URI: " + uriString);
+                return;
+            }
+
+            JSArray fileArray = new JSArray();
+            try {
+                int nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME);
+                int dataCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATA); // -1 on Android 10+
+                int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
+                int idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
+
+                while (cursor.moveToNext()) {
+                    String name = cursor.getString(nameCol);
+                    long size = cursor.getLong(sizeCol);
+                    long id = cursor.getLong(idCol);
+
+                    // Try DATA column first (Android <=9), else reconstruct URI
+                    String filePath = null;
+                    if (dataCol >= 0) {
+                        filePath = cursor.getString(dataCol);
+                    }
+                    // Fallback: use content URI with ID for rename operations
+                    if (filePath == null || filePath.isEmpty()) {
+                        filePath = ContentUris.withAppendedId(uri, id).toString();
+                    }
+
+                    JSObject fileObj = new JSObject();
+                    fileObj.put("name", name);
+                    fileObj.put("path", filePath);
+                    fileObj.put("size", size);
+                    fileArray.put(fileObj);
+                }
+            } finally {
+                cursor.close();
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("files", fileArray);
+            ret.put("directory", uriString);
+            ret.put("count", fileArray.length());
+            call.resolve(ret);
+
+        } catch (Exception e) {
+            call.reject("Failed to query MediaStore: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Resolve a content:// or file:// URI to an absolute filesystem path.
+     * Used by JS to extract the real folder path after file picker selection.
+     */
+    @PluginMethod
+    public void resolveUri(PluginCall call) {
+        String uriString = call.getString("uri");
+        if (uriString == null || uriString.isEmpty()) {
+            call.reject("URI is null or empty");
+            return;
+        }
+        try {
+            Uri uri = Uri.parse(uriString);
+            ContentResolver resolver = getContext().getContentResolver();
+            String realPath = resolveRealPath(uri, resolver);
+            JSObject ret = new JSObject();
+            if (realPath != null) {
+                ret.put("path", realPath);
+                ret.put("resolved", true);
+            } else {
+                ret.put("path", uriString); // Return original if can't resolve
+                ret.put("resolved", false);
+            }
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("Failed to resolve URI: " + e.getMessage());
         }
     }
 

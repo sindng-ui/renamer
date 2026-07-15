@@ -100,36 +100,62 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     }));
 
   // ─── STRATEGY 1: Native FilePicker ───────────────────────────────────────
-  // Opens the Android file explorer for user to pick individual files.
-  // After selection, auto-detects the parent folder path for quick re-use.
   const handleOpenFilePicker = async () => {
     setLoading(true);
     setError('');
     setJustLoadedPath(null);
     try {
       const result = await FilePicker.pickFiles({ readData: false });
+      if (!result.files || result.files.length === 0) return;
 
-      if (!result.files || result.files.length === 0) {
-        return;
+      const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
+
+      // Resolve each file's URI to a real physical path via native bridge
+      const items: FileRenameItem[] = await Promise.all(
+        result.files.map(async (file, idx) => {
+          let resolvedPath = file.path || '';
+
+          // On Android: resolve content:// URI → /storage/emulated/0/... real path
+          if (!isWeb && resolvedPath.startsWith('content://')) {
+            try {
+              const resolved = await ContentRename.resolveUri({ uri: resolvedPath });
+              if (resolved.resolved && resolved.path) {
+                resolvedPath = resolved.path;
+              }
+            } catch {
+              // keep original if resolve fails
+            }
+          }
+
+          // Fallback for web simulation
+          if (!resolvedPath) {
+            resolvedPath = `/storage/emulated/0/Download/${file.name}`;
+          }
+
+          return {
+            id: `picked-${idx}-${file.name}`,
+            originalName: file.name,
+            newName: file.name,
+            path: resolvedPath,
+          };
+        })
+      );
+
+      // Extract parent directory from first resolved path
+      const firstPath = items[0].path;
+      let parentDir = '';
+      if (firstPath.startsWith('/')) {
+        // Real filesystem path
+        const lastSlash = firstPath.lastIndexOf('/');
+        parentDir = lastSlash !== -1 ? firstPath.substring(0, lastSlash) : '';
+      } else if (firstPath.startsWith('content://')) {
+        // Still a content URI (resolve failed) — use as-is for MediaStore query
+        const lastSlash = firstPath.lastIndexOf('/');
+        parentDir = lastSlash !== -1 ? firstPath.substring(0, lastSlash) : firstPath;
       }
 
-      const items: FileRenameItem[] = result.files.map((file, idx) => {
-        const absolutePath = file.path || `/storage/emulated/0/Download/${file.name}`;
-        return {
-          id: `picked-${idx}-${file.name}`,
-          originalName: file.name,
-          newName: file.name,
-          path: absolutePath,
-        };
-      });
-
-      // Auto-detect parent folder from first selected file's path
-      const firstPath = items[0].path;
-      const lastSlash = firstPath.lastIndexOf('/');
-      const parentDir = lastSlash !== -1 ? firstPath.substring(0, lastSlash) : '';
-
       onFilesSelected(items, parentDir);
-      setJustLoadedPath(parentDir); // Trigger auto-register offer
+      setJustLoadedPath(parentDir);
       setIsCollapsed(true);
     } catch (err: any) {
       console.error(err);

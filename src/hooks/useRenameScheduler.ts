@@ -34,6 +34,7 @@ interface ContentRenamePlugin {
   listFiles(options: { path: string }): Promise<{ files: Array<{ name: string; path: string; size: number }>; directory: string; count: number }>;
   checkStoragePermission(): Promise<{ granted: boolean; needsAction: boolean }>;
   openStorageSettings(): Promise<void>;
+  resolveUri(options: { uri: string }): Promise<{ path: string; resolved: boolean }>;
 }
 
 const ContentRename = registerPlugin<ContentRenamePlugin>('ContentRename');
