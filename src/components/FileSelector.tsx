@@ -51,7 +51,6 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     setError('');
     try {
       const result = await FilePicker.pickFiles({
-        multiple: true,
         readData: false,
       });
 
