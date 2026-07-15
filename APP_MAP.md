@@ -109,11 +109,15 @@
 
 ### [[Content Rename Native Bridge]]
 - **ID**: `content-rename-native-bridge`
-- **Keywords**: [`content:// URI`, `이름 변경`, `DocumentsContract`, `MainActivity`, `Capacitor Plugin`]
+- **Keywords**: [`content:// URI`, `이름 변경`, `File.renameTo`, `DocumentsContract`, `MediaStore`, `resolveRealPath`, `Capacitor Plugin`]
 - **Location**:
   - `Java Code`: [ContentRenamePlugin.java](./android/app/src/main/java/com/happytool/renamer/ContentRenamePlugin.java)
   - `Registration`: [MainActivity.java](./android/app/src/main/java/com/happytool/renamer/MainActivity.java)
 - **Core Interface**:
-  - `ContentRename`: 안드로이드 스토리지 액세스 프레임워크(SAF) 내에서 파일 탐색기로부터 획득한 `content://` URI를 전달받아, 안드로이드 ContentResolver 및 DocumentsContract API를 사용해 물리 파일의 이름을 원활하게 강제 변경해주는 커스텀 Capacitor 플러그인 (Capacitor 로더 인식을 위해 public class로 별도 분리 설계됨)
-
-
+  - `ContentRename.rename`: 3단계 순차 폴백 전략으로 모든 종류의 안드로이드 파일을 리네임:
+    - **Strategy 1**: `content://` URI에서 실제 물리 경로(`/storage/emulated/0/...`)를 추출하여 `File.renameTo()`로 직접 이름 변경 (가장 확실)
+    - **Strategy 2**: DocumentsContract SAF 리네임 (문서 프로바이더 URI 대상)
+    - **Strategy 3**: MediaStore `DISPLAY_NAME` 컬럼 업데이트 (미디어 콘텐츠 URI 대상)
+  - `resolveRealPath`: ExternalStorageProvider, DownloadsProvider, MediaProvider 등 모든 주요 content:// URI 유형을 실제 물리 파일 경로로 해석하는 범용 URI 리졸버
+  - `notifyMediaStoreChange`: 물리 파일 리네임 후 갤러리 및 파일 매니저 앱이 즉시 반영하도록 MediaScanner를 트리거하는 동기화 메서드
+  - **런타임 권한**: MainActivity.java에서 앱 기동 시 Android 11+(API 30+) 기기에 "모든 파일 접근(MANAGE_EXTERNAL_STORAGE)" 시스템 설정 화면을 자동 팝업하여 사용자 명시적 권한 획득
