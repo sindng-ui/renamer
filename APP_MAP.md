@@ -133,4 +133,4 @@
     - **Strategy 3**: MediaStore `DISPLAY_NAME` 컬럼 업데이트 (미디어 콘텐츠 URI 대상)
   - `resolveRealPath`: ExternalStorageProvider, DownloadsProvider, MediaProvider 등 모든 주요 content:// URI 유형을 실제 물리 파일 경로로 해석하는 범용 URI 리졸버
   - `notifyMediaStoreChange`: 물리 파일 리네임 후 갤러리 및 파일 매니저 앱이 즉시 반영하도록 MediaScanner를 트리거하는 동기화 메서드
-  - **런타임 권한**: MainActivity.java에서 앱 기동 시 Android 11+(API 30+) 기기에 "모든 파일 접근(MANAGE_EXTERNAL_STORAGE)" 시스템 설정 화면을 자동 팝업하여 사용자 명시적 권한 획득
+  - **런타임 권한**: 앱 실행 안정성을 위해 MainActivity의 강제 화면 이동을 제거하고, 파일 작업 실행 시 플러그인(`ContentRename.openStorageSettings`)을 통해 사용자가 필요한 시점에 안전하게 "모든 파일 접근(MANAGE_EXTERNAL_STORAGE)" 권한을 획득하도록 개선
