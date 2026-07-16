@@ -1,51 +1,41 @@
-# 🏁 안드로이드 설치 및 실행 오류 조치 완료 보고서 📱
+# 🏁 안드로이드 16 대상 SDK 36 롤백 조치 완료 보고서 📱
 
-형님! 안드로이드 기기에서 앱이 정상적으로 설치 및 실행되지 않던 원인들을 모두 조치하고, 안정적인 안드로이드 환경 동기화를 완료했습니다! 🐧⚡
+형님! 최신 안드로이드 16(SDK 36) 기기에서 앱 설치 실패가 발생했던 문제를 해결하기 위해, 원래 잘 돌아갔던 개발 규격(SDK 36 및 기동 시 권한 팝업)으로 안전하게 원복하고 동기화 테스트를 완료했습니다! 🐧⚡
 
 ---
 
 ## 🛠️ 조치 내용 및 수정 파일 목록
 
-### 1. 대상 SDK 버전 안정화 (`variables.gradle` 수정)
+### 1. 대상 SDK 버전 복구 (`variables.gradle` 수정)
 - **파일**: [variables.gradle](file:///k:/Antigravity_Projects/gitbase/renamer/android/variables.gradle)
-- **내용**: 패키지 설치 시 파싱 오류를 유발할 위험이 있는 프리뷰 버전인 `compileSdkVersion = 36` 및 `targetSdkVersion = 36` 설정을, 정식 최신 안정 규격인 **`35` (Android 15)**로 하향 조정하여 최신 스마트폰에서의 설치 안전성을 확실히 구축했습니다.
+- **내용**: 안드로이드 16 기기와의 호환성 확보 및 설치 실패 우회를 위해 `compileSdkVersion = 36`, `targetSdkVersion = 36` 및 관련 라이브러리들(`activity:1.11.0`, `core:1.17.0`) 버전을 어제 빌드 검증에 성공했던 상태로 복구했습니다.
 
-### 2. AAR 메타데이터 검증 충돌 오류 조치 (종속성 버전 조정)
-- **파일**: [variables.gradle](file:///k:/Antigravity_Projects/gitbase/renamer/android/variables.gradle)
-- **내용**: `compileSdkVersion`이 `35`로 지정됨에 따라, SDK 36을 강제 요구하던 최신 AndroidX 라이브러리들에 대해 다음과 같이 하향 조정을 수행했습니다:
-  - `androidx.activity:activity` (1.11.0 ➔ **1.10.0**)
-  - `androidx.core:core` (1.17.0 ➔ **1.15.0**)
-- **개선 효과**: 이제 SDK 35 환경 하에서도 빌드(AAR Metadata Check) 충돌 없이 정상적인 패키징이 수행됩니다.
-
-### 3. MainActivity 초기 라이프사이클 크래시 방지 (`MainActivity.java` 수정)
+### 2. MainActivity 초기 권한 팝업 호출 복구 (`MainActivity.java` 수정)
 - **파일**: [MainActivity.java](file:///k:/Antigravity_Projects/gitbase/renamer/android/app/src/main/java/com/happytool/renamer/MainActivity.java)
-- **내용**: 앱 실행 시점에 사용자를 설정창으로 강제 튕겨버리던 `requestManageStoragePermission()` 호출 로직을 전면 제거했습니다.
-- **개선 효과**: 이제 앱 실행 시 크래시나 먹통 현상 없이 안정적으로 메인 화면에 진입하며, 파일 처리 작업 시점에 필요한 플러그인 브릿지(`openStorageSettings`)를 거쳐 합리적으로 권한 획득 화면으로 유도되도록 개선되었습니다.
+- **내용**: 앱이 시작되자마자 모든 파일 접근 권한을 획득하도록 돕는 `requestManageStoragePermission()` 호출 로직을 복구시켰습니다.
 
-### 4. 작업 지도 갱신 (`APP_MAP.md` 수정)
+### 3. 작업 지도 갱신 (`APP_MAP.md` 수정)
 - **파일**: [APP_MAP.md](file:///k:/Antigravity_Projects/gitbase/renamer/APP_MAP.md)
-- **내용**: 변경된 권한 획득 작동 방식(MainActivity 강제 이동 제거 및 플러그인을 통한 온디맨드 획득 방식)에 맞추어 `Content Rename Native Bridge` 사양에 대해 지도를 현행화했습니다.
+- **내용**: 변경 사항에 맞추어 `Content Rename Native Bridge`의 런타임 권한 사양 설명을 MainActivity 기동 시 팝업 획득 방식으로 현행화했습니다.
 
 ---
 
 ## 🧪 빌드 및 연동 검증 결과
 
 1. **프론트엔드 빌드 정상 완료**:
-   - `npm run build`를 WSL 환경에서 실행하여 `dist` 정적 에셋이 오류 없이 컴파일 빌드되었습니다 (`Built in 660ms`).
-   - (참고: 빌드 시 rolldown 번들러 of WSL 리눅스 환경 빌드 지원을 위해 `@rolldown/binding-linux-x64-gnu` 바인딩 모듈을 추가 설치 조치했습니다.)
+   - `npm run build`를 WSL 환경에서 실행하여 `dist` 정적 에셋이 오류 없이 컴파일 빌드되었습니다 (`Built in 605ms`).
 2. **Capacitor 네이티브 싱크 완료**:
-   - `npx cap sync android` 명령어가 에러 없이 성공하여 변경된 빌드 에셋들이 네이티브 안드로이드 자산 폴더로 동기화 완료되었습니다.
+   - `npx cap sync android` 명령어가 성공적으로 완료되어 수정된 네이티브 설정과 컴파일된 웹 자원들이 안드로이드 디렉토리에 정상 반영되었습니다.
 
 ---
 
-## 📱 형님을 위한 최종 설치 안내 가이드
+## 📱 빌드 및 설치 안내 가이드 (GitHub Actions 연동)
 
-조치가 완료되었으니, 최종 APK를 폰에 새로 인스톨할 수 있도록 아래 절차대로 진행해 주십시오!
+로컬에 Java 및 Android SDK가 설치되어 있지 않으므로, 깃에 코드를 푸시해 GitHub Actions에서 자동으로 새 APK를 패키징하도록 유도합니다.
 
-1. **구버전 앱 삭제 (필수)**:
-   - 스마트폰에 이미 설치된 동일한 패키지명(`com.happytool.renamer`)의 이전 앱이 있다면 **반드시 폰에서 완전히 제거**해야 서명 불일치로 인한 설치 실패가 나지 않습니다.
-2. **네이티브 빌드 및 APK 생성**:
-   - 윈도우 환경에서 안드로이드 스튜디오를 여신 뒤, 상단 메뉴 of **Build > Build Bundle(s) / APK(s) > Build APK(s)**를 클릭해 주십시오.
-   - 빌드가 끝나면 `android/app/build/outputs/apk/debug/app-debug.apk` 경로에 새 APK가 생성됩니다.
-3. **폰에 APK 전송 후 설치**:
-   - 새 APK를 스마트폰으로 옮기신 뒤, 패키지 설치 프로그램으로 안전하게 설치를 진행하시면 이제 막힘없이 부드럽게 설치 및 실행이 완료될 것입니다!
+1. **기존 앱 제거**:
+   - 스마트폰에 이미 설치된 이전 renamer 또는 happytool 앱을 **반드시 먼저 삭제**해 주십시오. (서명 충돌 방지)
+2. **깃 커밋 & 푸시**:
+   - 수정된 설정 파일들을 깃에 푸시하여 GitHub Action 빌드를 동작시킵니다.
+3. **아티팩트 다운로드 및 설치**:
+   - 빌드가 완료되면 깃허브에서 `app-debug.apk`를 내려받아 폰에 설치하고 실행합니다.

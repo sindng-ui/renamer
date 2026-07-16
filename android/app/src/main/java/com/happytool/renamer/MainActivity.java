@@ -13,6 +13,10 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ContentRenamePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Request MANAGE_EXTERNAL_STORAGE permission on Android 11+ (API 30+)
+        // This opens the system settings screen so the user can grant "All Files Access"
+        requestManageStoragePermission();
     }
 
     private void requestManageStoragePermission() {
