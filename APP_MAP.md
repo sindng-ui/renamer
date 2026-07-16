@@ -91,6 +91,17 @@
 - **Location**:
   - `View`: [src/components/CommonDialog.tsx](./src/components/CommonDialog.tsx)
 
+### [[Quick Run View Panel]]
+- **ID**: `quick-run-view-panel`
+- **Keywords**: [`빠른 실행`, `원클릭 재실행`, `네온 서클 버튼`, `이력 기억`, `localStorage`, `자동 분기`]
+- **Location**:
+  - `View`: [src/components/QuickRunView.tsx](./src/components/QuickRunView.tsx)
+- **Core Interface**:
+  - `QuickRunView`: 이전 리네임 성공 이력을 `localStorage`에서 가져와 중앙의 대형 네온 서클 버튼 형태로 렌더링.
+  - `onExecute`: 탭 한 번으로 대상 폴더 파일 스캔 및 지정된 이전 규칙 즉시 일괄 변환 기동.
+  - `onGoToDetail`: 상세 설정 및 세부 규칙 설정을 위한 일반 화면 전환 연동.
+
+
 ---
 
 ## 4. CI/CD & Build Pipeline

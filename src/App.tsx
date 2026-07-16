@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { previewRenameList } from './utils/renameRules';
 import type { RenameOptions } from './utils/renameRules';
-import { useRenameScheduler } from './hooks/useRenameScheduler';
+import { useRenameScheduler, ContentRename } from './hooks/useRenameScheduler';
 import type { FileRenameItem } from './hooks/useRenameScheduler';
 import { FileSelector } from './components/FileSelector';
 import { RenameRules } from './components/RenameRules';
@@ -10,6 +10,8 @@ import { ProgressIndicator } from './components/ProgressIndicator';
 import { ResultSummary } from './components/ResultSummary';
 import { ConfirmDialog } from './components/CommonDialog';
 import { App as CapApp } from '@capacitor/app';
+import { QuickRunView } from './components/QuickRunView';
+import type { LastRenameJob } from './components/QuickRunView';
 
 export default function App() {
   // 1. Rename Options state with local storage persistence
@@ -59,6 +61,20 @@ export default function App() {
   // Debounced options state to prevent frequent preview updates while typing (2s debounce)
   const [debouncedOptions, setDebouncedOptions] = useState<RenameOptions>(options);
 
+  // 5. Quick Run States
+  const [lastJob, setLastJob] = useState<LastRenameJob | null>(() => {
+    try {
+      const saved = localStorage.getItem('last_rename_job');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showQuickRun, setShowQuickRun] = useState<boolean>(() => {
+    return localStorage.getItem('last_rename_job') !== null;
+  });
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedOptions(options);
@@ -76,7 +92,24 @@ export default function App() {
     };
   }, []);
 
-  // 5. Generate live preview list via useMemo for performance optimization (First 50 items for large lists with debounce)
+  // Save last successful rename job to localStorage
+  useEffect(() => {
+    if (results.length > 0 && !running) {
+      const successCount = results.filter(r => r.success).length;
+      if (successCount > 0 && directoryPath) {
+        const job: LastRenameJob = {
+          directoryPath,
+          fileCount: successCount,
+          options,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem('last_rename_job', JSON.stringify(job));
+        setLastJob(job);
+      }
+    }
+  }, [results, running, directoryPath, options]);
+
+  // 6. Generate live preview list via useMemo for performance optimization (First 50 items for large lists with debounce)
   const previewFiles = useMemo(() => {
     if (originalFiles.length === 0) return [];
     
@@ -143,6 +176,137 @@ export default function App() {
     clearResults(); 
   };
 
+  // Trigger quick execution using saved job config
+  const handleQuickExecute = async () => {
+    if (!lastJob || running) return;
+    setLoadingFiles(true);
+    try {
+      const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
+      let items: FileRenameItem[] = [];
+
+      if (isWeb) {
+        // Web simulation fallback
+        const count = lastJob.fileCount;
+        const extensions = ['.png', '.jpg', '.mp4', '.pdf', '.txt', '.zip'];
+        items = Array.from({ length: count }, (_, i) => {
+          const ext = extensions[i % extensions.length];
+          const pad = String(i + 1).padStart(4, '0');
+          const name = `IMG_${pad}_MOCK${ext}`;
+          return { id: `mock-${i}`, originalName: name, newName: name, path: `${lastJob.directoryPath}/${name}` };
+        });
+      } else {
+        const result = await ContentRename.listFiles({ path: lastJob.directoryPath });
+        if (!result.files || result.files.length === 0) {
+          throw new Error('폴더에 파일이 없거나 접근 권한이 없습니다.');
+        }
+        items = result.files.map((file, idx) => ({
+          id: `quick-${idx}-${file.name}`,
+          originalName: file.name,
+          newName: file.name,
+          path: file.path,
+        }));
+      }
+
+      setOriginalFiles(items);
+      setDirectoryPath(lastJob.directoryPath);
+      setOptions(lastJob.options);
+
+      // Calculate rename mappings immediately using saved options
+      const originalNames = items.map(f => f.originalName);
+      const newNames = previewRenameList(originalNames, lastJob.options);
+      const renameItems = items.map((file, idx) => ({
+        ...file,
+        newName: newNames[idx],
+      }));
+
+      await executeRename(renameItems);
+    } catch (err: any) {
+      alert(`빠른 실행 중 오류가 발생했습니다: ${err.message || err}`);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  const handleQuickClearResults = () => {
+    if (results.length > 0) {
+      // Calculate full rename list using current options to update base list
+      const originalNames = originalFiles.map(f => f.originalName);
+      const newNames = previewRenameList(originalNames, options);
+      const fullRenamedList = originalFiles.map((file, idx) => ({
+        ...file,
+        newName: newNames[idx],
+      }));
+      
+      const updatedFiles = fullRenamedList.map(file => {
+        const result = results.find(r => r.id === file.id);
+        if (result && result.success) {
+          return {
+            ...file,
+            originalName: file.newName,
+          };
+        }
+        return file;
+      });
+      setOriginalFiles(updatedFiles);
+    }
+    clearResults();
+  };
+
+  if (showQuickRun && lastJob) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%', 
+        width: '100%',
+        padding: '0.85rem',
+        gap: '0.75rem',
+        overflowY: 'auto'
+      }}>
+        {/* Premium Neon Header */}
+        <header style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          paddingBottom: '0.4rem',
+          borderBottom: '1px solid var(--border-color)'
+        }}>
+          <div>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
+              ⚡ <span className="gradient-text">Bulk Renamer</span>
+            </h1>
+          </div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            v1.0.0
+          </div>
+        </header>
+
+        <QuickRunView
+          lastJob={lastJob}
+          running={running}
+          loadingFiles={loadingFiles}
+          progress={progress}
+          results={results}
+          onExecute={handleQuickExecute}
+          onGoToDetail={() => setShowQuickRun(false)}
+          onClearResults={handleQuickClearResults}
+        />
+
+        {/* App Exit Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={isExitConfirmOpen}
+          title="🚪 앱 종료 확인"
+          message="Bulk Renamer 앱을 종료하시겠습니까?"
+          confirmText="종료"
+          cancelText="취소"
+          isDanger={false}
+          onConfirm={() => CapApp.exitApp()}
+          onCancel={() => setIsExitConfirmOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -167,6 +331,24 @@ export default function App() {
           </h1>
         </div>
         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          {lastJob && (
+            <button
+              onClick={() => setShowQuickRun(true)}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.15rem 0.4rem',
+                color: 'var(--color-neon-pink)',
+                fontSize: '0.62rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                marginRight: '0.5rem',
+              }}
+            >
+              ⚡ 퀵 모드
+            </button>
+          )}
           v1.0.0
         </div>
       </header>
