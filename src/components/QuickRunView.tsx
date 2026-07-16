@@ -97,13 +97,22 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
               {loadingFiles ? (
                 <>
                   <div className="quick-run-spinner"></div>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>파일 목록 스캔 중...</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-cyan)' }}>
+                    PREPARING...
+                  </span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
+                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
+                    Readying files
+                  </span>
                 </>
               ) : running ? (
                 <>
                   <div className="quick-run-spinner" style={{ borderTopColor: 'var(--color-neon-emerald)' }}></div>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{percent}%</span>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '0.2rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
+                    TRANSFORMING...
+                  </span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
+                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
                     {progress.processed} / {progress.total}
                   </span>
                 </>

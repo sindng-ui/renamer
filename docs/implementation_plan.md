@@ -1,58 +1,74 @@
-# ⚡ 서명 충돌 우회를 위한 패키지명(applicationId) 변경 구현 계획서 📱
+# ⚡ QuickRunView.tsx 로딩 및 변환 진행 UI 개선 계획서 ⚡
 
-형님! 3단계 보안 설정을 해제하셨음에도 불구하고 "앱이 설치되지 않음"이 뜨는 현상은, 폰 내부에 이전에 깔린 구버전 앱의 찌꺼기 패키지(동일 패키지명 `com.happytool.renamer`)가 완벽하게 지워지지 않아 **안드로이드 OS 레벨에서 서명 키 충돌로 강제 차단**하는 현상입니다.
-
-형님 환경에 개발 도구가 없으시므로 컴퓨터에 폰을 연결해 강제 언인스톨(ADB)을 수행하는 것보다, **앱의 고유 패키지명(applicationId)을 다른 이름으로 변경하여 새로운 독립 앱으로 폰에 100% 안전하게 설치되도록 우회하는 묘수**를 제안합니다! 🐧⚡
+형님! 이전 리네임 성공 이력을 즉시 실행하는 퀵 러너 화면(`QuickRunView.tsx`)에서, 단순 스캔을 넘어 실질적인 **변환 준비 및 실행 작업**임을 시각적으로 웅장하게 보여줄 수 있도록 UI 문구와 진행률 표시를 세련된 영어 단어와 다크 네온 감성으로 업그레이드하고자 합니다! 🐧⚡
 
 ---
 
 ## 🙋 유저 검토 사항 (User Review Required)
 
 > [!IMPORTANT]
-> - **고유 패키지명 변경**:
->   - 기존: `com.happytool.renamer`
->   - 변경: **`com.happytool.bulkrenamer`**
->   - 패키지명이 변경되면 안드로이드 OS는 이 앱을 기존에 깔려있던 앱과 완전히 무관한 새 앱으로 인식하므로, 서명 충돌 필터를 가볍게 우회하여 **한 방에 즉시 설치 완료**됩니다.
+> - **세련된 영문 상태 표시 도입**:
+>   - 기존의 한국어 단조로운 '파일 목록 스캔 중...' 문구를 대문자 네온 색상 영단어인 `PREPARING...` 과 `TRANSFORMING...` 으로 변환하여 훨씬 프리미엄한 감성을 연출합니다.
+> - **진행률 % 상시 표시**:
+>   - 변환 전 파일 조회(준비) 단계와 변환 실행 단계 모두에서 중앙 원형 버튼 내부에 진행률 `%`가 직관적인 크기로 실시간 노출되도록 디자인을 통일합니다.
 
 ---
 
 ## 🛠️ 제안하는 변경 사항 (Proposed Changes)
 
-### 1. Capacitor 구성 파일 수정
+### 1. UI 컴포넌트 수정
 
-#### [MODIFY] [capacitor.config.ts](file:///k:/Antigravity_Projects/gitbase/renamer/capacitor.config.ts)
-- `appId` 식별자를 `com.happytool.bulkrenamer`로 수정합니다.
+#### [MODIFY] [QuickRunView.tsx](file:///k:/Antigravity_Projects/gitbase/renamer/src/components/QuickRunView.tsx)
+- `loadingFiles`와 `running` 분기 처리 영역을 개선하여 멋진 대문자 단어 및 진행률 %를 일관되게 출력합니다.
+- 준비 상태(`loadingFiles`): `PREPARING...` 표시, `{percent}%` 노출, 하단에 `Readying files` 표시.
+- 진행 상태(`running`): `TRANSFORMING...` 표시, `{percent}%` 노출, 하단에 `{progress.processed} / {progress.total}` 표시.
 
 ```diff
- const config: CapacitorConfig = {
--  appId: 'com.happytool.renamer',
-+  appId: 'com.happytool.bulkrenamer',
-   appName: 'renamer',
-   webDir: 'dist'
- };
+               {loadingFiles ? (
+                 <>
+                   <div className="quick-run-spinner"></div>
+-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>파일 목록 스캔 중...</span>
++                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-cyan)' }}>
++                    PREPARING...
++                  </span>
++                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
++                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
++                    Readying files
++                  </span>
+                 </>
+               ) : running ? (
+                 <>
+                   <div className="quick-run-spinner" style={{ borderTopColor: 'var(--color-neon-emerald)' }}></div>
++                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
++                    TRANSFORMING...
++                  </span>
+                   <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{percent}%</span>
+                   <span style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '0.2rem' }}>
+                     {progress.processed} / {progress.total}
+                   </span>
+                 </>
 ```
 
 ---
 
-### 2. 안드로이드 build.gradle 수정
+### 2. AI 작업 지도(APP_MAP) 업데이트
 
-#### [MODIFY] [build.gradle](file:///k:/Antigravity_Projects/gitbase/renamer/android/app/build.gradle)
-- `applicationId`를 `com.happytool.bulkrenamer`로 수정합니다.
-- (참고: 자바 파일 및 폴더 구조의 복잡한 패키지 변경을 피하기 위해, 코드 내부 참조용 `namespace`는 기존 `com.happytool.renamer`로 안전하게 유지하고 오직 폰 설치 식별자인 `applicationId`만 변경하여 안전성과 편리성을 모두 챙깁니다.)
-
-```diff
-     defaultConfig {
--        applicationId "com.happytool.renamer"
-+        applicationId "com.happytool.bulkrenamer"
-         minSdkVersion rootProject.ext.minSdkVersion
-         targetSdkVersion rootProject.ext.targetSdkVersion
-```
+#### [MODIFY] [APP_MAP.md](file:///k:/Antigravity_Projects/gitbase/renamer/APP_MAP.md)
+- `QuickRunView` 설명 블록에 UI 개선 내용(영문 변환 문구, 상시 백분율 표시 적용)에 대한 최신 사양을 명기합니다.
 
 ---
 
 ## 🧪 검증 계획 (Verification Plan)
 
 ### 수동 검증 (Manual Verification)
-1. **웹 자원 빌드 및 싱크**: WSL 환경에서 `npm run build && npx cap sync android`가 정상 작동하는지 확인합니다.
-2. **GitHub Actions 컴파일 관찰**: 코드를 깃에 푸시하고, 새 패키지명이 반영된 디버그 APK가 깃허브에서 정상 패키징되는지 지켜봅니다.
-3. **최종 폰 설치 확인**: 빌드된 새 APK를 안드로이드 16 폰에 설치하여 한 번에 안전하게 인스톨되는지 확인합니다.
+1. **퀵 실행 진입**: 이전 실행 기록이 있는 상태에서 퀵 모드로 전환한 뒤 즉시 실행하기 버튼 클릭.
+2. **준비 단계 관찰**: `PREPARING...` 문구와 `0%` 백분율이 정상적으로 렌더링되는지 확인.
+3. **진행 단계 관찰**: 파일 변경이 수행되면서 `TRANSFORMING...` 문구와 `%` 숫자가 100%까지 매끄럽게 상승하는지 시각적으로 체크.
+
+---
+
+## 🚀 승인 및 진행 (Proceed)
+
+형님! 계획서 검토 후 진행하시려면 아래의 **Proceed** 버튼을 클릭하시거나 대화창에 **Proceed**라고 한 말씀 남겨주십시오! 바로 신나게 개발에 착수하겠습니다! 🐧🔥
+
+[Proceed](sandbox:/execute/proceed)
