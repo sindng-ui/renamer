@@ -98,11 +98,10 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
                 <>
                   <div className="quick-run-spinner"></div>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-cyan)' }}>
-                    PREPARING...
+                    TRANSFORMING...
                   </span>
                   <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
                   <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
-                    Readying files
                   </span>
                 </>
               ) : running ? (
@@ -147,7 +146,7 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.45rem', marginBottom: '0.15rem' }}>
               📝 마지막 변환 이력 정보
             </div>
-            
+
             <div className="quick-run-meta-row">
               <span className="quick-run-meta-label">📂 대상 폴더</span>
               <span className="quick-run-meta-value folder" title={lastJob.directoryPath}>
@@ -170,7 +169,7 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
         /* Bento Grid Result Summary if execution completed */
         <div className="animate-slide-up" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
           <ResultSummary results={results} onClear={onClearResults} />
-          
+
           <button
             className="btn btn-secondary"
             style={{ width: '100%', padding: '0.8rem', fontSize: '0.85rem' }}
