@@ -4,7 +4,7 @@ android {
     namespace = "com.happytool.renamer"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.happytool.renamer"
+        applicationId "com.happytool.bulkrenamer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
