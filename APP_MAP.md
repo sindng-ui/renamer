@@ -101,11 +101,11 @@
 
 ### [[Quick Run View Panel]]
 - **ID**: `quick-run-view-panel`
-- **Keywords**: [`빠른 실행`, `원클릭 재실행`, `네온 서클 버튼`, `이력 기억`, `localStorage`, `자동 분기`, `실시간 전량 스캔`, `스마트 칩`, `PREPARING`, `TRANSFORMING`]
+- **Keywords**: [`빠른 실행`, `원클릭 재실행`, `네온 서클 버튼`, `이력 기억`, `localStorage`, `자동 분기`, `실시간 전량 스캔`, `스마트 칩`, `No-Clipping Layout`, `PREPARING`, `TRANSFORMING`]
 - **Location**:
   - `View`: [src/components/QuickRunView.tsx](./src/components/QuickRunView.tsx)
 - **Core Interface**:
-  - `QuickRunView`: 이전 리네임 대상 폴더 경로 및 적용 규칙을 `localStorage`에서 불러와 원버튼으로 구성. 재실행/원버튼 누름 시점에 이전 변환 개수가 아닌 **해당 폴더 내의 현재 모든 최신 파일(새로 추가된 파일 포함 전량)**을 실시간 스캔하여 변환 대상으로 설정. 최근 자주 변환한 폴더를 원클릭 전환할 수 있는 `recentFolders` 스마트 칩 프리셋 UI 지원.
+  - `QuickRunView`: 이전 리네임 대상 폴더 경로 및 적용 규칙을 `localStorage`에서 불러와 원버튼으로 구성. 변환 중에는 불필요한 카드를 가리고 중앙 서클+프로그레스 스트림만 시원하게 노출하며, 변환 완료 시에는 `ResultSummary` 내부 스크롤과 하단 "🔄 확인 완료" 버튼 고정 배치(Flex Sticky Bottom)를 적용하여 안드로이드 폰 화면 하단 잘림 현상을 100% 방지. 최근 자주 변환한 폴더를 원클릭 전환할 수 있는 `recentFolders` 스마트 칩 프리셋 UI 지원.
   - `onExecute`: 탭 한 번으로 대상 폴더의 전체 최신 파일을 실시간 스캔하고 지정된 이전 규칙을 일괄 변환 기동.
   - `onGoToDetail`: 상세 설정 및 세부 규칙 설정을 위한 일반 화면 전환 연동.
 

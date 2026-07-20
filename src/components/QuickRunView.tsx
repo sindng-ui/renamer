@@ -114,8 +114,8 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
                     TRANSFORMING...
                   </span>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
-                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
+                  <span style={{ fontSize: '0.68rem', opacity: 0.85, marginTop: '0.1rem' }}>
                     {progress.processed} / {progress.total}
                   </span>
                 </>
@@ -133,43 +133,45 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
             </button>
           </div>
 
-          {/* Running Progress Bar (shows only when running) */}
+          {/* Running Progress Stream (shows while running, compact fit) */}
           {running && (
-            <div className="animate-fade-in" style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
-              <div className="neon-progress-container" style={{ height: '6px' }}>
+            <div className="animate-fade-in" style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center', margin: '0.5rem 0' }}>
+              <div className="neon-progress-container" style={{ height: '8px', width: '100%' }}>
                 <div className="neon-progress-bar" style={{ width: `${percent}%` }}></div>
               </div>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                {progress.currentFile || '이름 변경 중...'}
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-neon-cyan)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', textAlign: 'center' }}>
+                {progress.currentFile || '이름 변경 진행 중...'}
               </span>
             </div>
           )}
 
-          {/* Quick info card */}
-          <div className="quick-run-info-card animate-slide-up">
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.45rem', marginBottom: '0.15rem' }}>
-              📝 마지막 변환 폴더 및 규칙 정보
-            </div>
+          {/* Quick info card (Hide during running to prevent vertical clipping) */}
+          {!running && (
+            <div className="quick-run-info-card animate-slide-up">
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.35rem', marginBottom: '0.1rem' }}>
+                📝 마지막 변환 폴더 및 규칙 정보
+              </div>
 
-            <div className="quick-run-meta-row">
-              <span className="quick-run-meta-label">📂 대상 폴더</span>
-              <span className="quick-run-meta-value folder" title={lastJob.directoryPath}>
-                {folderName} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', display: 'block', marginTop: '0.1rem' }}>{lastJob.directoryPath}</span>
-              </span>
-            </div>
+              <div className="quick-run-meta-row">
+                <span className="quick-run-meta-label">📂 대상 폴더</span>
+                <span className="quick-run-meta-value folder" title={lastJob.directoryPath}>
+                  {folderName} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', display: 'block', marginTop: '0.1rem' }}>{lastJob.directoryPath}</span>
+                </span>
+              </div>
 
-            <div className="quick-run-meta-row">
-              <span className="quick-run-meta-label">📄 변환 대상</span>
-              <span className="quick-run-meta-value count">{lastJob.fileCount.toLocaleString()}개 파일 (전체 실시간 스캔)</span>
-            </div>
+              <div className="quick-run-meta-row">
+                <span className="quick-run-meta-label">📄 변환 대상</span>
+                <span className="quick-run-meta-value count">{lastJob.fileCount.toLocaleString()}개 파일 (전체 실시간 스캔)</span>
+              </div>
 
-            <div className="quick-run-meta-row">
-              <span className="quick-run-meta-label">⚙️ 적용 규칙</span>
-              <span className="quick-run-meta-value">{getRuleSummaryText(lastJob.options)}</span>
+              <div className="quick-run-meta-row">
+                <span className="quick-run-meta-label">⚙️ 적용 규칙</span>
+                <span className="quick-run-meta-value">{getRuleSummaryText(lastJob.options)}</span>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Smart Folder Chips UI */}
+          {/* Smart Folder Chips UI (Hide during running) */}
           {recentFolders.length > 0 && !isBusy && (
             <div className="quick-folder-chips-container animate-fade-in">
               <div className="quick-folder-chips-title">
@@ -195,13 +197,15 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
           )}
         </>
       ) : (
-        /* Bento Grid Result Summary if execution completed */
-        <div className="animate-slide-up" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-          <ResultSummary results={results} onClear={onClearResults} />
+        /* Result Summary Container with Flex Overflow Fit (Fixes bottom truncation) */
+        <div className="animate-slide-up" style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: '0.2rem' }}>
+            <ResultSummary results={results} onClear={onClearResults} />
+          </div>
 
           <button
             className="btn btn-secondary"
-            style={{ width: '100%', padding: '0.8rem', fontSize: '0.85rem' }}
+            style={{ width: '100%', padding: '0.75rem', fontSize: '0.85rem', flexShrink: 0, marginTop: '0.2rem' }}
             onClick={onClearResults}
           >
             🔄 확인 완료 (재실행 화면으로)
@@ -209,18 +213,19 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
         </div>
       )}
 
-      {/* Action Footer to detail page */}
-      {!isBusy && (
+      {/* Action Footer to detail page (Hide during results view or running) */}
+      {!isBusy && results.length === 0 && (
         <button
           className="btn btn-secondary animate-fade-in"
           style={{
-            marginTop: '0.5rem',
-            fontSize: '0.82rem',
+            marginTop: '0.2rem',
+            fontSize: '0.8rem',
             borderColor: 'transparent',
             backgroundColor: 'transparent',
             color: 'var(--color-neon-cyan)',
             textDecoration: 'underline',
             cursor: 'pointer',
+            flexShrink: 0,
           }}
           onClick={onGoToDetail}
         >

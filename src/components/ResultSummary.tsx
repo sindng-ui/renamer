@@ -20,16 +20,17 @@ export const ResultSummary: React.FC<ResultSummaryProps> = ({ results, onClear }
     <div className="premium-card animate-slide-up" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      gap: '1rem',
+      gap: '0.6rem',
+      padding: '0.85rem 1rem',
       borderLeft: '4px solid var(--color-neon-emerald)',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
           📊 작업 결과 요약 보고
         </h3>
         <button 
           className="btn btn-secondary" 
-          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+          style={{ padding: '0.3rem 0.6rem', fontSize: '0.72rem' }}
           onClick={onClear}
         >
           결과 닫기
@@ -40,13 +41,13 @@ export const ResultSummary: React.FC<ResultSummaryProps> = ({ results, onClear }
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(3, 1fr)', 
-        gap: '0.75rem' 
+        gap: '0.5rem' 
       }}>
         {/* Total Card */}
         <div style={{ 
           backgroundColor: 'var(--bg-primary)', 
           border: '1px solid var(--border-color)', 
-          padding: '0.75rem', 
+          padding: '0.5rem 0.4rem', 
           borderRadius: 'var(--radius-md)',
           textAlign: 'center'
         }}>
