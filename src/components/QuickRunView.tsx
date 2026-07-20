@@ -16,9 +16,11 @@ interface QuickRunViewProps {
   loadingFiles: boolean;
   progress: RenameProgress;
   results: RenameResult[];
+  recentFolders?: Array<{ label: string; path: string }>;
   onExecute: () => void;
   onGoToDetail: () => void;
   onClearResults: () => void;
+  onSelectFolder?: (path: string) => void;
 }
 
 function getRuleSummaryText(opts: RenameOptions): string {
@@ -59,9 +61,11 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
   loadingFiles,
   progress,
   results,
+  recentFolders = [],
   onExecute,
   onGoToDetail,
   onClearResults,
+  onSelectFolder,
 }) => {
   const isBusy = running || loadingFiles;
   const folderName = lastJob.directoryPath.split('/').filter(Boolean).pop() || lastJob.directoryPath;
@@ -81,7 +85,7 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
           ⚡ <span className="gradient-text">Quick Re-execute</span>
         </h2>
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          마지막에 성공한 변환 작업이 감지되었습니다. 즉시 재실행할 수 있습니다.
+          마지막 변환 대상 폴더가 감지되었습니다. 원버튼 클릭 시 해당 폴더 내의 모든 최신 파일을 실시간 스캔하여 변환합니다.
         </p>
       </div>
 
@@ -98,10 +102,10 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
                 <>
                   <div className="quick-run-spinner"></div>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-cyan)' }}>
-                    TRANSFORMING...
+                    SCANNING FILES...
                   </span>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
-                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
+                  <span style={{ fontSize: '0.75rem', marginTop: '0.3rem', color: 'var(--text-secondary)' }}>
+                    최신 파일 스캔 중...
                   </span>
                 </>
               ) : running ? (
@@ -119,10 +123,10 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
                 <>
                   <span style={{ fontSize: '2.5rem', marginBottom: '0.3rem', display: 'block' }}>⚡</span>
                   <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.01em' }}>
-                    즉시 재실행하기
+                    즉시 전체 변환하기
                   </span>
                   <span style={{ fontSize: '0.68rem', opacity: 0.85, marginTop: '0.4rem' }}>
-                    탭하여 변환 즉시 시작
+                    폴더 전체 최신 파일 실시간 스캔 및 변환
                   </span>
                 </>
               )}
@@ -144,7 +148,7 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
           {/* Quick info card */}
           <div className="quick-run-info-card animate-slide-up">
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.45rem', marginBottom: '0.15rem' }}>
-              📝 마지막 변환 이력 정보
+              📝 마지막 변환 폴더 및 규칙 정보
             </div>
 
             <div className="quick-run-meta-row">
@@ -155,8 +159,8 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
             </div>
 
             <div className="quick-run-meta-row">
-              <span className="quick-run-meta-label">📄 파일 개수</span>
-              <span className="quick-run-meta-value count">{lastJob.fileCount.toLocaleString()}개 파일</span>
+              <span className="quick-run-meta-label">📄 변환 대상</span>
+              <span className="quick-run-meta-value count">{lastJob.fileCount.toLocaleString()}개 파일 (전체 실시간 스캔)</span>
             </div>
 
             <div className="quick-run-meta-row">
@@ -164,6 +168,31 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
               <span className="quick-run-meta-value">{getRuleSummaryText(lastJob.options)}</span>
             </div>
           </div>
+
+          {/* Smart Folder Chips UI */}
+          {recentFolders.length > 0 && !isBusy && (
+            <div className="quick-folder-chips-container animate-fade-in">
+              <div className="quick-folder-chips-title">
+                <span>⭐ 최근 원클릭 폴더 칩</span>
+              </div>
+              <div className="quick-folder-chips-wrapper">
+                {recentFolders.map((item, idx) => {
+                  const isActive = item.path === lastJob.directoryPath;
+                  return (
+                    <button
+                      key={`chip-${idx}-${item.path}`}
+                      className={`folder-chip-btn ${isActive ? 'active' : ''}`}
+                      onClick={() => onSelectFolder && onSelectFolder(item.path)}
+                      title={item.path}
+                    >
+                      <span>📂</span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         /* Bento Grid Result Summary if execution completed */

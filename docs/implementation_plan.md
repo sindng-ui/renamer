@@ -1,74 +1,51 @@
-# ⚡ QuickRunView.tsx 로딩 및 변환 진행 UI 개선 계획서 ⚡
+# 📱 앱 구조 개편: 좌/우 스와이프 탭 모드 & 스마트 아이디어 적용 계획
 
-형님! 이전 리네임 성공 이력을 즉시 실행하는 퀵 러너 화면(`QuickRunView.tsx`)에서, 단순 스캔을 넘어 실질적인 **변환 준비 및 실행 작업**임을 시각적으로 웅장하게 보여줄 수 있도록 UI 문구와 진행률 표시를 세련된 영어 단어와 다크 네온 감성으로 업그레이드하고자 합니다! 🐧⚡
-
----
-
-## 🙋 유저 검토 사항 (User Review Required)
-
-> [!IMPORTANT]
-> - **세련된 영문 상태 표시 도입**:
->   - 기존의 한국어 단조로운 '파일 목록 스캔 중...' 문구를 대문자 네온 색상 영단어인 `PREPARING...` 과 `TRANSFORMING...` 으로 변환하여 훨씬 프리미엄한 감성을 연출합니다.
-> - **진행률 % 상시 표시**:
->   - 변환 전 파일 조회(준비) 단계와 변환 실행 단계 모두에서 중앙 원형 버튼 내부에 진행률 `%`가 직관적인 크기로 실시간 노출되도록 디자인을 통일합니다.
+형님! 요청해주신 **좌/우 스와이프 입력 탭 구조 개편**, **마지막 탭 상태 복원**, 그리고 앱의 손맛과 편의성을 극대화할 **재밌고 유용한 추가 아이디어** 제안 및 구현 계획입니다. 🐧⚡
 
 ---
 
-## 🛠️ 제안하는 변경 사항 (Proposed Changes)
+## 💡 형님 제안 추가 아이디어 (제안 & 피드백)
 
-### 1. UI 컴포넌트 수정
+요청해주신 1번, 2번 핵심 개편과 더불어, 함께 도입하면 어플 느낌이 획기적으로 살아나는 **3가지 특별 아이디어**를 준비했습니다!
 
-#### [MODIFY] [QuickRunView.tsx](file:///k:/Antigravity_Projects/gitbase/renamer/src/components/QuickRunView.tsx)
-- `loadingFiles`와 `running` 분기 처리 영역을 개선하여 멋진 대문자 단어 및 진행률 %를 일관되게 출력합니다.
-- 준비 상태(`loadingFiles`): `PREPARING...` 표시, `{percent}%` 노출, 하단에 `Readying files` 표시.
-- 진행 상태(`running`): `TRANSFORMING...` 표시, `{percent}%` 노출, 하단에 `{progress.processed} / {progress.total}` 표시.
-
-```diff
-               {loadingFiles ? (
-                 <>
-                   <div className="quick-run-spinner"></div>
--                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>파일 목록 스캔 중...</span>
-+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-cyan)' }}>
-+                    PREPARING...
-+                  </span>
-+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
-+                  <span style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.1rem' }}>
-+                    Readying files
-+                  </span>
-                 </>
-               ) : running ? (
-                 <>
-                   <div className="quick-run-spinner" style={{ borderTopColor: 'var(--color-neon-emerald)' }}></div>
-+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
-+                    TRANSFORMING...
-+                  </span>
-                   <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{percent}%</span>
-                   <span style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '0.2rem' }}>
-                     {progress.processed} / {progress.total}
-                   </span>
-                 </>
-```
+1. **📱 햅틱 진동 피드백 (Capacitor Haptics)**
+   - 원버튼 탭 시 묵직한 햅틱 진동, 변환 완료 시 경쾌한 2연타 햅틱 피드백을 제공하여 손맛을 극대화합니다.
+2. **📂 최근 사용 폴더 퀵 프리셋 칩 (Smart Folder Chips)**
+   - 마지막 폴더 1개 외에도 최근 자주 사용한 폴더 상위 3개를 원버튼 하단에 콤팩트한 칩 버튼으로 노출하여 원클릭 폴더 전환을 지원합니다.
+3. **✨ 60fps 스라이딩 스와이프 뷰 (Touch Touch Gesture Container)**
+   - 모바일 터치 스와이프(TouchStart / TouchMove / TouchEnd) 제스처 지원으로 손가락을 쓱 넘기면 [🎲 무작위 원버튼] ↔ [✏️ 커스텀 변환] 사이를 미끄러지듯 이동합니다. (CSS Blur 대신 H/W 가속 Transform 사용으로 60fps 보장)
 
 ---
 
-### 2. AI 작업 지도(APP_MAP) 업데이트
+## 🛠️ Proposed Changes (주요 변경 사항)
+
+### [Component Name: App Navigation & Layout]
+
+#### [NEW] [src/components/SwipeTabContainer.tsx](file:///k:/Antigravity_Projects/gitbase/renamer/src/components/SwipeTabContainer.tsx)
+- 터치 제스처 스와이프(좌/우 스와이프) 처리 컴포넌트 신규 분리 (`App.tsx` 500줄 초과 방지).
+- 상단 네온 탭 바 ([🎲 무작위 변환] | [✏️ 커스텀 변환]) 렌더링.
+- 좌/우 스와이프 제스처 판별 (`touchStartX`, `touchEndX`, 델타 50px 이상 반응).
+
+#### [MODIFY] [src/App.tsx](file:///k:/Antigravity_Projects/gitbase/renamer/src/App.tsx)
+- `activeTab` 상태 추가 (`'random'` | `'custom'`) & `localStorage` 영구 저장을 통한 재실행 시 마지막 탭 자동 복원.
+- 재실행 시 마지막 탭이 `'random'`이고 `lastJob` 이력이 있으면 최신 폴더 전량 변환 원버튼 뷰 제공.
+- 햅틱 피드백 연동 및 퀵 폴더 칩 선택 연동.
+
+#### [MODIFY] [src/components/QuickRunView.tsx](file:///k:/Antigravity_Projects/gitbase/renamer/src/components/QuickRunView.tsx)
+- 하단에 최근 사용 폴더 퀵 프리셋 칩 UI 추가.
+- 스와이프 안내 아이콘 및 탭 안내 레이아웃 적용.
 
 #### [MODIFY] [APP_MAP.md](file:///k:/Antigravity_Projects/gitbase/renamer/APP_MAP.md)
-- `QuickRunView` 설명 블록에 UI 개선 내용(영문 변환 문구, 상시 백분율 표시 적용)에 대한 최신 사양을 명기합니다.
+- 좌/우 스와이프 탭 컨테이너 구조 및 탭 유지 로직 명시.
 
 ---
 
-## 🧪 검증 계획 (Verification Plan)
+## 🧪 Verification Plan (검증 계획)
 
-### 수동 검증 (Manual Verification)
-1. **퀵 실행 진입**: 이전 실행 기록이 있는 상태에서 퀵 모드로 전환한 뒤 즉시 실행하기 버튼 클릭.
-2. **준비 단계 관찰**: `PREPARING...` 문구와 `0%` 백분율이 정상적으로 렌더링되는지 확인.
-3. **진행 단계 관찰**: 파일 변경이 수행되면서 `TRANSFORMING...` 문구와 `%` 숫자가 100%까지 매끄럽게 상승하는지 시각적으로 체크.
+### Manual Verification
+1. **좌/우 스와이프 테스트**: 화면을 좌우로 쓱 밀었을 때 [무작위 변환]과 [커스텀 변환] 모드가 매끄럽게 전환되는지 확인.
+2. **마지막 탭 복원 테스트**: '무작위 변환' 탭 상태에서 앱을 종료/재실행 시 원버튼 변환 화면으로 바로 복원되는지 확인.
+3. **웹 및 모바일 반응형 검증**: 터치 이벤트 및 탭 클릭 전환이 렉 없이 작동하는지 빌드 검증 (`npm run build`).
 
 ---
-
-## 🚀 승인 및 진행 (Proceed)
-
-형님! 계획서 검토 후 진행하시려면 아래의 **Proceed** 버튼을 클릭하시거나 대화창에 **Proceed**라고 한 말씀 남겨주십시오! 바로 신나게 개발에 착수하겠습니다! 🐧🔥
-
-[Proceed](sandbox:/execute/proceed)
+형님, 제시해드린 추가 아이디어와 스와이프 개편 계획을 확인하시고 아래 **[Proceed]** 버튼을 눌러주시면 멋지게 신나게 코딩을 시작하겠습니다! 🚀

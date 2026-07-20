@@ -12,6 +12,8 @@ import { ConfirmDialog } from './components/CommonDialog';
 import { App as CapApp } from '@capacitor/app';
 import { QuickRunView } from './components/QuickRunView';
 import type { LastRenameJob } from './components/QuickRunView';
+import { SwipeTabContainer } from './components/SwipeTabContainer';
+import type { AppTabMode } from './components/SwipeTabContainer';
 
 export default function App() {
   // 1. Rename Options state with local storage persistence
@@ -47,21 +49,35 @@ export default function App() {
     localStorage.setItem('rename_options', JSON.stringify(options));
   }, [options]);
 
-  // 2. File State
+  // 2. Active Tab persistence ('random' | 'custom')
+  const [activeTab, setActiveTab] = useState<AppTabMode>(() => {
+    try {
+      const saved = localStorage.getItem('last_active_tab');
+      if (saved === 'random' || saved === 'custom') return saved;
+    } catch {}
+    return 'random';
+  });
+
+  const handleTabChange = (tab: AppTabMode) => {
+    setActiveTab(tab);
+    localStorage.setItem('last_active_tab', tab);
+  };
+
+  // 3. File State
   const [originalFiles, setOriginalFiles] = useState<FileRenameItem[]>([]);
   const [directoryPath, setDirectoryPath] = useState('');
 
-  // 3. Confirm Dialog state
+  // 4. Confirm Dialog state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
-  // 4. Rename Scheduler Hook
+  // 5. Rename Scheduler Hook
   const { progress, running, results, executeRename, stopRename, clearResults } = useRenameScheduler();
 
-  // Debounced options state to prevent frequent preview updates while typing (2s debounce)
+  // Debounced options state to prevent frequent preview updates while typing
   const [debouncedOptions, setDebouncedOptions] = useState<RenameOptions>(options);
 
-  // 5. Quick Run States
+  // 6. Quick Run States & Recent Folders
   const [lastJob, setLastJob] = useState<LastRenameJob | null>(() => {
     try {
       const saved = localStorage.getItem('last_rename_job');
@@ -70,10 +86,25 @@ export default function App() {
       return null;
     }
   });
-  const [showQuickRun, setShowQuickRun] = useState<boolean>(() => {
-    return localStorage.getItem('last_rename_job') !== null;
-  });
+  
   const [loadingFiles, setLoadingFiles] = useState(false);
+
+  // Recent folders derived from favorites
+  const recentFolders = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('renamer_favorites');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => ({
+            label: item.label || item.path.split('/').filter(Boolean).pop() || item.path,
+            path: item.path,
+          })).slice(0, 5);
+        }
+      }
+    } catch {}
+    return lastJob ? [{ label: lastJob.directoryPath.split('/').filter(Boolean).pop() || lastJob.directoryPath, path: lastJob.directoryPath }] : [];
+  }, [lastJob]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -82,7 +113,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [options]);
 
-  // Monitor Android back button to confirm app exit (Fixes 3번 에러)
+  // Monitor Android back button to confirm app exit
   useEffect(() => {
     const handler = CapApp.addListener('backButton', () => {
       setIsExitConfirmOpen(true);
@@ -92,24 +123,44 @@ export default function App() {
     };
   }, []);
 
-  // Save last successful rename job to localStorage
+  // Save last rename job info to localStorage
+  const saveLastJobInfo = (path: string, count: number, currentOptions: RenameOptions) => {
+    if (!path) return;
+    const job: LastRenameJob = {
+      directoryPath: path,
+      fileCount: count,
+      options: currentOptions,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem('last_rename_job', JSON.stringify(job));
+    setLastJob(job);
+  };
+
+  // Automatically sync last job file count with actual filesystem count in background
   useEffect(() => {
-    if (results.length > 0 && !running) {
-      const successCount = results.filter(r => r.success).length;
-      if (successCount > 0 && directoryPath) {
-        const job: LastRenameJob = {
-          directoryPath,
-          fileCount: successCount,
-          options,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem('last_rename_job', JSON.stringify(job));
-        setLastJob(job);
+    if (activeTab === 'random' && lastJob?.directoryPath) {
+      const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
+      if (!isWeb) {
+        ContentRename.listFiles({ path: lastJob.directoryPath })
+          .then(res => {
+            if (res.files && res.files.length > 0 && res.files.length !== lastJob.fileCount) {
+              saveLastJobInfo(lastJob.directoryPath, res.files.length, lastJob.options);
+            }
+          })
+          .catch(() => {});
       }
     }
-  }, [results, running, directoryPath, options]);
+  }, [activeTab, lastJob?.directoryPath]);
 
-  // 6. Generate live preview list via useMemo for performance optimization (First 50 items for large lists with debounce)
+  // Save last rename job when results are generated
+  useEffect(() => {
+    if (results.length > 0 && !running && directoryPath) {
+      const totalCount = originalFiles.length > 0 ? originalFiles.length : results.length;
+      saveLastJobInfo(directoryPath, totalCount, options);
+    }
+  }, [results, running, directoryPath, options, originalFiles.length]);
+
+  // Generate live preview list
   const previewFiles = useMemo(() => {
     if (originalFiles.length === 0) return [];
     
@@ -125,13 +176,11 @@ export default function App() {
     }));
   }, [originalFiles, debouncedOptions]);
 
-  // Handle files selection
   const handleFilesSelected = (files: FileRenameItem[], path: string) => {
     setOriginalFiles(files);
     setDirectoryPath(path);
   };
 
-  // Helper to generate full rename list on-demand
   const getFullRenameList = (): FileRenameItem[] => {
     const originalNames = originalFiles.map(f => f.originalName);
     const newNames = previewRenameList(originalNames, options);
@@ -141,9 +190,10 @@ export default function App() {
     }));
   };
 
-  // Trigger rename operation
   const handleStartRename = () => {
     if (originalFiles.length === 0 || running) return;
+
+    saveLastJobInfo(directoryPath, originalFiles.length, options);
 
     if (options.mode === 'random') {
       setIsConfirmOpen(true);
@@ -159,7 +209,6 @@ export default function App() {
 
   const handleClearResults = () => {
     if (results.length > 0) {
-      // Calculate full rename list using options at the time of rename to update state
       const fullRenamedList = getFullRenameList();
       const updatedFiles = fullRenamedList.map(file => {
         const result = results.find(r => r.id === file.id);
@@ -176,26 +225,26 @@ export default function App() {
     clearResults(); 
   };
 
-  // Trigger quick execution using saved job config
-  const handleQuickExecute = async () => {
-    if (!lastJob || running) return;
+  // Quick execution for target folder
+  const handleQuickExecute = async (targetPath?: string) => {
+    const folderPath = targetPath || lastJob?.directoryPath;
+    if (!folderPath || running) return;
     setLoadingFiles(true);
     try {
       const isWeb = !window.hasOwnProperty('android') && !window.hasOwnProperty('webkit');
       let items: FileRenameItem[] = [];
 
       if (isWeb) {
-        // Web simulation fallback
-        const count = lastJob.fileCount;
+        const count = (lastJob && lastJob.fileCount > 0) ? lastJob.fileCount : 1000;
         const extensions = ['.png', '.jpg', '.mp4', '.pdf', '.txt', '.zip'];
         items = Array.from({ length: count }, (_, i) => {
           const ext = extensions[i % extensions.length];
           const pad = String(i + 1).padStart(4, '0');
           const name = `IMG_${pad}_MOCK${ext}`;
-          return { id: `mock-${i}`, originalName: name, newName: name, path: `${lastJob.directoryPath}/${name}` };
+          return { id: `mock-${i}`, originalName: name, newName: name, path: `${folderPath}/${name}` };
         });
       } else {
-        const result = await ContentRename.listFiles({ path: lastJob.directoryPath });
+        const result = await ContentRename.listFiles({ path: folderPath });
         if (!result.files || result.files.length === 0) {
           throw new Error('폴더에 파일이 없거나 접근 권한이 없습니다.');
         }
@@ -208,12 +257,15 @@ export default function App() {
       }
 
       setOriginalFiles(items);
-      setDirectoryPath(lastJob.directoryPath);
-      setOptions(lastJob.options);
+      setDirectoryPath(folderPath);
+      
+      const currentOpts = lastJob?.options || options;
+      setOptions(currentOpts);
 
-      // Calculate rename mappings immediately using saved options
+      saveLastJobInfo(folderPath, items.length, currentOpts);
+
       const originalNames = items.map(f => f.originalName);
-      const newNames = previewRenameList(originalNames, lastJob.options);
+      const newNames = previewRenameList(originalNames, currentOpts);
       const renameItems = items.map((file, idx) => ({
         ...file,
         newName: newNames[idx],
@@ -229,7 +281,6 @@ export default function App() {
 
   const handleQuickClearResults = () => {
     if (results.length > 0) {
-      // Calculate full rename list using current options to update base list
       const originalNames = originalFiles.map(f => f.originalName);
       const newNames = previewRenameList(originalNames, options);
       const fullRenamedList = originalFiles.map((file, idx) => ({
@@ -252,108 +303,49 @@ export default function App() {
     clearResults();
   };
 
-  if (showQuickRun && lastJob) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100%', 
-        width: '100%',
-        padding: '0.85rem',
-        gap: '0.75rem',
-        overflowY: 'auto'
-      }}>
-        {/* Premium Neon Header */}
-        <header style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          paddingBottom: '0.4rem',
-          borderBottom: '1px solid var(--border-color)'
-        }}>
-          <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-              ⚡ <span className="gradient-text">Bulk Renamer</span>
-            </h1>
-          </div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            v1.0.0
-          </div>
-        </header>
+  const handleSelectPresetFolder = (path: string) => {
+    if (lastJob) {
+      saveLastJobInfo(path, lastJob.fileCount, lastJob.options);
+    } else {
+      saveLastJobInfo(path, 0, options);
+    }
+  };
 
+  // View 1: Random One-Button Quick View
+  const renderRandomView = () => {
+    if (lastJob) {
+      return (
         <QuickRunView
           lastJob={lastJob}
           running={running}
           loadingFiles={loadingFiles}
           progress={progress}
           results={results}
-          onExecute={handleQuickExecute}
-          onGoToDetail={() => setShowQuickRun(false)}
+          recentFolders={recentFolders}
+          onExecute={() => handleQuickExecute()}
+          onGoToDetail={() => handleTabChange('custom')}
           onClearResults={handleQuickClearResults}
+          onSelectFolder={handleSelectPresetFolder}
         />
+      );
+    }
 
-        {/* App Exit Confirmation Dialog */}
-        <ConfirmDialog
-          isOpen={isExitConfirmOpen}
-          title="🚪 앱 종료 확인"
-          message="Bulk Renamer 앱을 종료하시겠습니까?"
-          confirmText="종료"
-          cancelText="취소"
-          isDanger={false}
-          onConfirm={() => CapApp.exitApp()}
-          onCancel={() => setIsExitConfirmOpen(false)}
-        />
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem 1rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>⚡ 원버튼 랜덤 변환 모드</h2>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          먼저 커스텀 탭에서 대상 폴더를 가져오시거나 변환을 한 번 실행하시면, 이후 앱 실행 시 이 화면에서 원버튼으로 즉시 전량 변환할 수 있습니다.
+        </p>
+        <button className="btn btn-cyan" onClick={() => handleTabChange('custom')}>
+          📂 폴더 선택하러 가기 ➔
+        </button>
       </div>
     );
-  }
+  };
 
-  return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100%', 
-      width: '100%',
-      padding: '0.85rem',
-      gap: '0.75rem',
-      overflowY: 'auto'
-    }}>
-      {/* Premium Neon Header */}
-      <header style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        paddingBottom: '0.4rem',
-        borderBottom: '1px solid var(--border-color)'
-      }}>
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-            ⚡ <span className="gradient-text">Bulk Renamer</span>
-          </h1>
-        </div>
-        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-          {lastJob && (
-            <button
-              onClick={() => setShowQuickRun(true)}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '0.15rem 0.4rem',
-                color: 'var(--color-neon-pink)',
-                fontSize: '0.62rem',
-                cursor: 'pointer',
-                fontWeight: 600,
-                marginRight: '0.5rem',
-              }}
-            >
-              ⚡ 퀵 모드
-            </button>
-          )}
-          v1.0.0
-        </div>
-      </header>
-
-      {/* 4. Action Command Bar (Promoted to top for accessibility) */}
+  // View 2: Custom Rules View
+  const renderCustomView = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {originalFiles.length === 0 ? (
           <button 
@@ -382,36 +374,69 @@ export default function App() {
         ) : null}
       </div>
 
-      {/* 5. Progress Stream Panel */}
       <ProgressIndicator 
         progress={progress}
         running={running}
         onStop={stopRename}
       />
 
-      {/* 6. Operation Results Summary */}
       <ResultSummary 
         results={results}
         onClear={handleClearResults}
       />
 
-      {/* 1. File Selection Section (Collapsed by default) */}
       <FileSelector 
         onFilesSelected={handleFilesSelected}
         selectedCount={originalFiles.length}
         selectedDirectory={directoryPath}
       />
 
-      {/* 2. Options Setup Section */}
       <RenameRules 
         options={options}
         onChange={setOptions}
       />
 
-      {/* 3. Realtime Live Preview List (Flex-grow to occupy rest space) */}
       <PreviewList items={previewFiles} totalCount={originalFiles.length} />
+    </div>
+  );
 
-      {/* Confirmation modal for random mode */}
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '100%', 
+      width: '100%',
+      padding: '0.85rem',
+      gap: '0.5rem',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <header style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        paddingBottom: '0.4rem',
+        borderBottom: '1px solid var(--border-color)'
+      }}>
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
+            ⚡ <span className="gradient-text">Bulk Renamer</span>
+          </h1>
+        </div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          v1.0.0
+        </div>
+      </header>
+
+      {/* Swipe Gesture Tab Container */}
+      <SwipeTabContainer
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        randomView={renderRandomView()}
+        customView={renderCustomView()}
+      />
+
+      {/* Dialogs */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
         title="🎲 랜덤 이름 일괄 변경 확인"
@@ -423,7 +448,6 @@ export default function App() {
         onCancel={() => setIsConfirmOpen(false)}
       />
 
-      {/* App Exit Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isExitConfirmOpen}
         title="🚪 앱 종료 확인"
@@ -437,3 +461,4 @@ export default function App() {
     </div>
   );
 }
+
