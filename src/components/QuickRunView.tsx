@@ -79,19 +79,68 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
 
   return (
     <div className="quick-run-layout">
-      {/* Upper Welcome Header */}
-      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          ⚡ <span className="gradient-text">Quick Re-execute</span>
-        </h2>
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          마지막 변환 대상 폴더가 감지되었습니다. 원버튼 클릭 시 해당 폴더 내의 모든 최신 파일을 실시간 스캔하여 변환합니다.
-        </p>
-      </div>
+      {/* Upper Welcome Header — hide during running to reclaim vertical space */}
+      {!running && (
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            ⚡ <span className="gradient-text">Quick Re-execute</span>
+          </h2>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            마지막 변환 대상 폴더가 감지되었습니다. 원버튼 클릭 시 해당 폴더 내의 모든 최신 파일을 실시간 스캔하여 변환합니다.
+          </p>
+        </div>
+      )}
 
       {results.length === 0 ? (
         <>
-          {/* Central Big Circle Button */}
+          {/* ---- Running State: single centered block (circle + all progress info) ---- */}
+          {running ? (
+            <div className="quick-run-running-block animate-fade-in">
+              {/* Compact circle (smaller while running) */}
+              <div className="quick-run-circle-outer">
+                <button
+                  className={`quick-run-circle-btn ${buttonModeClass}`}
+                  style={{ width: 'clamp(110px, 18vh, 140px)', height: 'clamp(110px, 18vh, 140px)', cursor: 'not-allowed', opacity: 0.9 }}
+                  disabled
+                >
+                  <div className="quick-run-spinner" style={{ borderTopColor: 'var(--color-neon-emerald)', width: '36px', height: '36px', marginBottom: '0.5rem' }}></div>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
+                    TRANSFORMING...
+                  </span>
+                </button>
+              </div>
+
+              {/* Big percent display */}
+              <div style={{ fontSize: '2.8rem', fontWeight: 900, lineHeight: 1, color: '#fff', letterSpacing: '-0.02em' }}>
+                {percent}<span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-secondary)', marginLeft: '2px' }}>%</span>
+              </div>
+
+              {/* Count */}
+              <div style={{ fontSize: '0.9rem', color: 'var(--color-neon-cyan)', fontWeight: 700 }}>
+                {progress.processed.toLocaleString()} / {progress.total.toLocaleString()} 개
+              </div>
+
+              {/* Progress bar */}
+              <div className="neon-progress-container" style={{ height: '10px', width: '100%', maxWidth: '300px' }}>
+                <div className="neon-progress-bar" style={{ width: `${percent}%`, transition: 'width 0.2s ease' }}></div>
+              </div>
+
+              {/* Current filename */}
+              <div style={{
+                fontSize: '0.72rem',
+                color: 'var(--color-neon-cyan)',
+                fontFamily: 'var(--font-mono)',
+                wordBreak: 'break-all',
+                textAlign: 'center',
+                maxWidth: '300px',
+                lineHeight: 1.4,
+                minHeight: '2.2em',
+              }}>
+                📄 {progress.currentFile || '이름 변경 진행 중...'}
+              </div>
+            </div>
+          ) : (
+          /* ---- Normal / Idle State: big circle button ---- */
           <div className="quick-run-circle-outer">
             <button
               className={`quick-run-circle-btn ${buttonModeClass} ${pulseClass}`}
@@ -108,17 +157,6 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
                     최신 파일 스캔 중...
                   </span>
                 </>
-              ) : running ? (
-                <>
-                  <div className="quick-run-spinner" style={{ borderTopColor: 'var(--color-neon-emerald)' }}></div>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--color-neon-pink)' }}>
-                    TRANSFORMING...
-                  </span>
-                  <span style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '0.2rem' }}>{percent}%</span>
-                  <span style={{ fontSize: '0.68rem', opacity: 0.85, marginTop: '0.1rem' }}>
-                    {progress.processed} / {progress.total}
-                  </span>
-                </>
               ) : (
                 <>
                   <span style={{ fontSize: '2.5rem', marginBottom: '0.3rem', display: 'block' }}>⚡</span>
@@ -132,17 +170,6 @@ export const QuickRunView: React.FC<QuickRunViewProps> = ({
               )}
             </button>
           </div>
-
-          {/* Running Progress Stream (shows while running, compact fit) */}
-          {running && (
-            <div className="animate-fade-in" style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center', margin: '0.5rem 0' }}>
-              <div className="neon-progress-container" style={{ height: '8px', width: '100%' }}>
-                <div className="neon-progress-bar" style={{ width: `${percent}%` }}></div>
-              </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--color-neon-cyan)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', textAlign: 'center' }}>
-                {progress.currentFile || '이름 변경 진행 중...'}
-              </span>
-            </div>
           )}
 
           {/* Quick info card (Hide during running to prevent vertical clipping) */}

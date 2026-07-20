@@ -291,13 +291,25 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   height: 100%;
   width: 100%;
   padding: 0.4rem 0.25rem;
-  gap: 0.4rem;
+  gap: 0.5rem;
   box-sizing: border-box;
   animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* Running state: compact centered column, all progress info visible at once */
+.quick-run-running-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  box-sizing: border-box;
 }
 
 .quick-run-circle-outer {
