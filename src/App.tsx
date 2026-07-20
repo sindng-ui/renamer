@@ -179,6 +179,9 @@ export default function App() {
   const handleFilesSelected = (files: FileRenameItem[], path: string) => {
     setOriginalFiles(files);
     setDirectoryPath(path);
+    if (path && files.length > 0) {
+      saveLastJobInfo(path, files.length, options);
+    }
   };
 
   const getFullRenameList = (): FileRenameItem[] => {
